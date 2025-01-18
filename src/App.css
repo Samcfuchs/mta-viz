@@ -7,7 +7,11 @@
 body {
 }
 
-
+.stopLabel {
+  color: #eee8;
+  font-family: sans-serif;
+  /* font-size: 50px; */
+}
 
 aside {
   height: 100%;
