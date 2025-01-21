@@ -36,6 +36,14 @@ app.get('/routes.json', (req, res) => {
     res.sendFile(path.join(__dirname, '../data', 'routes.json'))
 })
 
+app.get('/stop_times.txt', (req, res) => {
+    res.sendFile(path.join(__dirname, '../data', 'stop_times.txt'))
+})
+
+app.get('/trips.txt', (req, res) => {
+    res.sendFile(path.join(__dirname, '../data', 'trips.txt'))
+})
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`)
 })

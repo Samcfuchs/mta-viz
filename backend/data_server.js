@@ -29,6 +29,12 @@ app.get('/routes.txt', function (req, res) {
 app.get('/routes.json', function (req, res) {
     res.sendFile(path.join(__dirname, '../data', 'routes.json'));
 });
+app.get('/stop_times.txt', function (req, res) {
+    res.sendFile(path.join(__dirname, '../data', 'stop_times.txt'));
+});
+app.get('/trips.txt', function (req, res) {
+    res.sendFile(path.join(__dirname, '../data', 'trips.txt'));
+});
 app.listen(port, function () {
     console.log("Server running on port ".concat(port));
 });

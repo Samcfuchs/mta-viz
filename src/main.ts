@@ -1,12 +1,14 @@
 import './App.css'
-import {init, update as viz_update} from './Viz.ts'
-import {pull,init as init_data} from './RealTime.ts';
+import {initScene, initData, setData} from './Viz.ts'
+import {pull, init} from './RealTime.ts';
 
-init()
-init_data()
-
-window.setInterval(() => {
-    let d = pull();
-    if (d && d.length) viz_update(pull())
-}, 1000);
-console.info("test")
+initScene();
+initData();
+init().then(() => {
+    window.setInterval(() => {
+        let d = pull();
+        console.info('rtd loaded:')
+        console.info(d)
+        if (d) setData(d);
+    }, 30*1000);
+});

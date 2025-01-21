@@ -5,35 +5,15 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train, TrainProps } from './Train.ts';
+import { getShapes, getStops, getRoutes, getStopTimes } from './Static.ts';
+import { DataChunk, pull } from './RealTime.ts';
+import { string } from 'three/tsl';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
 const CENTER = new THREE.Vector3(CENTER_LON, CENTER_LAT, 0)
 
 let trains : Record<string, Train> = {};
-
-function parseShapesToJSON(text: string) {
-    const data_obj: Record<string, THREE.Vector3[]> = {}
-
-    text.split('\n').slice(1, -1).forEach((row) => {
-        let items: Array<string> = row.split(',')
-        if (!items.length) return;
-
-        // create slot if nexists
-        if (!(items[0] in data_obj)) { data_obj[items[0]] = [] }
-
-        //data_obj[items[0]][Number(items[1])] = new THREE.Vector3(Number(items[2]), 0, Number(items[3]));
-        //let v = new THREE.Vector3()
-        let v = coordinateLL(Number(items[2]), Number(items[3]))
-        data_obj[items[0]][Number(items[1])] = v;
-    })
-
-    return data_obj;
-}
-
-function coordinate(v:THREE.Vector3) {
-    v.sub(CENTER);
-}
 
 function coordinateLL(lat:number, lon:number) {
     let v = new THREE.Vector3(lon, lat, 0).sub(CENTER);
@@ -70,10 +50,11 @@ function putSurface(normal:THREE.Vector3) : THREE.Mesh {
 
 }
 
-let stopCoords : Record<string, THREE.Vector3> = {};
+export let stopCoords : Record<string, THREE.Vector3> = {};
 let scene : THREE.Scene;
+export let staticStopTimes : any;
 
-export function init() {
+export function initScene() {
     const mount = document.getElementById('renderWindow') as HTMLDivElement;
 
     scene = new THREE.Scene();
@@ -90,13 +71,10 @@ export function init() {
     labelRenderer.domElement.style.pointerEvents = 'none';
     mount.appendChild(labelRenderer.domElement);
 
-
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.001, 1000);
 
-    console.log(camera.position.toArray());
-
     camera.up.set(0,0,1);
-    camera.position.set(0,-1,1);
+    camera.position.set(0,-.3,.3);
     camera.lookAt(0,0,0);
     const controls = new MapControls(camera, renderer.domElement);
     //const controls = new MapControls(camera, renderer.domElement);
@@ -106,171 +84,222 @@ export function init() {
 
     controls.update(.01);
 
-
-    let origin = new THREE.Vector3()
     let target = putCube(controls.target)
-    scene.add(target);
-    /*
-    scene.add(putCube(origin.clone().add(new THREE.Vector3(0,.02,0))));
-    scene.add(putCube(origin.clone().add(new THREE.Vector3(.02,0,0))));
-    scene.add(putCube(origin.clone().add(new THREE.Vector3(0,0,.02))));
-    //scene.add(putSurface(controls.target));
+    //scene.add(target);
 
-    scene.add(putSurface(origin.clone().add(new THREE.Vector3(0,0,-.02))));
-    */
+    let start : number;
+    let prev : number;
 
+    function animate(timestamp:number) {
+        requestAnimationFrame(animate);
 
-    function addStop(row: any) {
+        if (start === undefined) { start = timestamp }
+        const elapsed = timestamp - start;
+        const dt = timestamp - prev
 
-        let v = coordinateLL(row['stop_lat'], row['stop_lon']);
-        stopCoords[row['stop_id']] = v;
-
-        if ((row['stop_id'].slice(-1) == 'N') || (row['stop_id'].slice(-1) == 'S')) return;
-        //let geom = new THREE.CircleGeometry(.0004);
-        let geom = new THREE.SphereGeometry(.0004);
-        geom.lookAt(new THREE.Vector3(0, 0, 1));
-        //geom.translate(row['stop_lat'], .0001, row['stop_lon']);
-        //geom.translate(row['stop_lon'], .0001, row['stop_lat']);
-        geom.translate(v.x, v.y, v.z)
-
-
-        let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
-        const stop = new THREE.Mesh(geom, material)
-
-        scene.add(stop);
-
-        const stopDiv = document.createElement('div');
-        stopDiv.className = 'stopLabel';
-        stopDiv.textContent = row.stop_id;
-        stopDiv.style.backgroundColor = 'transparent';
-
-        const stopLabel = new CSS2DObject(stopDiv);
-        stopLabel.position.set(...v.toArray());
-        stopLabel.center.set(0,2);
-        stop.add(stopLabel);
-
-        return stop;
-    }
-
-    function drawLines(json: Record<string, THREE.Vector3[]>) {
-        console.log("Drawing lines");
-
-        Object.entries(json).forEach(([id, v]) => {
-            let route: string = id.split('.')[0];
-            const lineM = new LineMaterial({ color: `#${lineColors[route]}`, linewidth: 10 });
-            try {
-                const lineG = new LineGeometry().setFromPoints(v.filter(n => n));
-                const line = new Line2(lineG, lineM);
-                scene.add(line);
-            } catch {
-                console.warn("Failed to draw a line");
-                console.log(id);
-                console.log(v);
-                console.log(v.filter(n => n));
-            }
-        })
-    }
-
-    let geometry = new THREE.ConeGeometry(.001, .002);
-
-    geometry.translate(0,0,.005);
-    //geometry.center();
-    //geometry.lookAt(new THREE.Vector3(0,-1,0));
-    let material = new THREE.MeshNormalMaterial();
-    let obj = new THREE.Mesh(geometry, material);
-
-    scene.add(obj);
-
-    fetch('http://localhost:3000/shapes.txt')
-        .then(response => {
-            if (!response.ok) throw new Error("Failed to fetch shapes");
-            return response.text();
-        })
-        .then(parseShapesToJSON)
-        .then(drawLines)
-        .then(() => console.log("Lines loaded"));
-
-
-    fetch('http://localhost:3000/stops')
-        .then(response => response.json())
-        //.then(json => { console.log(json); return json; })
-        .then(json => json.forEach(addStop))
-        .then(_ => renderer.render(scene, camera));
-
-    let lineColors: Record<string, string> = {};
-
-    fetch('http://localhost:3000/routes.json')
-        .then(response => {
-            if (!response.ok) throw new Error("Failed to fetch routes");
-            return response.json();
-        })
-        .then(json => {
-            json.forEach((route: any) => lineColors[route['route_id']] = route['route_color'])
-        });
-    
-    
-
-    function animate() {
         let d = new Date();
         let t = d.getTime();
+        //console.info(dt);
+        let destination = stopCoords['L02']
 
-        //obj.position.add(new THREE.Vector3(0,0,0.0001 * Math.sin(t/100)));
-        //obj.rotateOnAxis(new THREE.Vector3(0,0,1), .005)
+        Object.entries(trains).map((kv,_) => {
+            kv[1].update(dt, t); // All the trains get an animation update
 
-        Object.entries(trains).forEach(([_,train]) => train.update(t));
-        /*
-        try {
-            trains["039200_2..S05R"].update(t);
-        } catch {
-        }
-        */
+            // Temporary debug behavior
+            if (kv[1].mesh) {
+                kv[1].mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .00001);
+            }
+        })
 
-
-
-        requestAnimationFrame(animate);
         controls.update(.01);
-        target.position.set(...controls.target.toArray())
-
-        // cameraPosition.current = {
-        //     x: camera.position.x,
-        //     y: camera.position.y,
-        //     z: camera.position.z
-        // };
+        //target.position.set(...controls.target.toArray())
 
         renderer.render(scene, camera);
         labelRenderer.render(scene, camera);
+
+        //this.mesh.position.addScaledVector(difference, ms/dt*1);
+
+        prev = timestamp;
     }
 
-    animate();
+    animate(.01);
 
 };
 
-export function update(data : TrainProps[]) {
-    console.info(`Updating ${data.length} trains`);
-    console.log(trains);
-    data.forEach((t) => {
-        if (!t.tripId) return;
+/**
+ * Add a 3D modeled stop to the current scene
+ * @param row A row of data from stops.txt to generate a stop from
+ * @returns void
+ */
+function addStop(row: any) {
 
-        let train : Train = trains[t.tripId]
+    let v = coordinateLL(row['stop_lat'], row['stop_lon']);
+    stopCoords[row['stop_id']] = v;
+
+    if ((row['stop_id'].slice(-1) == 'N') || (row['stop_id'].slice(-1) == 'S')) return;
+    //let geom = new THREE.CircleGeometry(.0004);
+    let geom = new THREE.SphereGeometry(.0002);
+    geom.lookAt(new THREE.Vector3(0, 0, 1));
+    geom.translate(v.x, v.y, v.z)
+
+
+    let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
+    const stop = new THREE.Mesh(geom, material)
+
+    scene.add(stop);
+
+    const stopDiv = document.createElement('div');
+    stopDiv.className = 'stopLabel';
+    stopDiv.textContent = row.stop_id;
+    stopDiv.style.backgroundColor = 'transparent';
+
+    const stopLabel = new CSS2DObject(stopDiv);
+    stopLabel.position.set(...v.toArray());
+    stopLabel.center.set(0,4);
+    stop.add(stopLabel);
+
+    return stop;
+}
+
+/**
+ * Draw 3D subway lines in scene
+ * @param json Routes from static data
+ */
+function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Record<string,string>) {
+    console.log("Drawing lines");
+
+    let lc = lineColors ? (route:string) => lineColors[route] : (route:string) => 'EEEEEE'
+
+    Object.entries(json).forEach(([id, ll]) => {
+        let v : THREE.Vector3[] = ll.map(xy => coordinateLL(...xy));
+        let route: string = id.split('.')[0];
+        const lineM = new LineMaterial({ color: `#${lc(route)}`, linewidth: 10 });
+        try {
+            const lineG = new LineGeometry().setFromPoints(v.filter(n => n));
+            const line = new Line2(lineG, lineM);
+            scene.add(line);
+        } catch {
+            console.warn("Failed to draw a line");
+            console.log(id);
+            console.log(v);
+            console.log(v.filter(n => n));
+        }
+    })
+}
+
+export async function initData() {
+
+    getStops()
+        .then(json => json.forEach(addStop))
+        //.then(_ => renderer.render(scene,camera));
+
+    let lineColors: Record<string, string> = {};
+
+    getRoutes()
+        .then(json => {
+            json.forEach((route: any) => lineColors[route['route_id']] = route['route_color'])
+        }).then(() => getShapes()
+                        .then(shapes => drawRoutes(shapes, lineColors))
+                        .then(() => console.log("Routes loaded")));
+    
+    staticStopTimes = await getStopTimes();
+    
+    console.info("Static stop times: ");
+    console.info(staticStopTimes);
+
+    window.setTimeout(() => {setData(staticStopTimes, pull())}, 5000)
+}
+
+export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : any,) {
+    stopTimes = stopTimes ? stopTimes : staticStopTimes;
+
+    console.info(`Initializing ${Object.keys(stopTimes).length} static routes 
+        and ${Object.keys(realTimeData).length} live trains`);
+
+
+    let nLive = 0, nTotal = 0;
+    // All the static routes appear in the realtime data.
+    Object.keys(realTimeData).forEach(key => {
+        nTotal++;
+        let rtd = realTimeData[key];
+        let staticData = stopTimes[rtd.tripID];
+        //staticData = staticData ?? stopTimes[rtd.tripID]
+        if(!staticData) {
+            // No match with static data
+            //console.warn(`No static data found for train ${key} w/ ${rtd.shortTripID}`)
+            return;
+        }
+
+        let train : Train = trains[rtd.tripID]
         if (!train) {
-            //console.log("New")
-            train = new Train(t);
-            trains[t.tripId] = train;
-            train.add_to_scene(scene);
+            // Create one
+            train = new Train(rtd.tripID) 
+            train.setData(rtd);
+
+            if (rtd.hasVehicle) {
+                train.createMesh();
+                train.addToScene(scene);
+            }
+
+            trains[rtd.tripID] = train;
+        }
+
+        // could also add static data here
+        train.setData(rtd);
+        train.manageDataChange();
+
+        nLive++;
+    })
+    console.log(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
+
+}
+
+export function update(data : Record<string, DataChunk>) {
+    console.info(`Updating ${Object.keys(data).length} trains`);
+    //console.info(data);
+    //console.log(trains);
+    Object.entries(data).forEach(kv => {
+        let d : DataChunk = kv[1];
+        let id = d.tripID;
+
+        let train : Train = trains[id];
+        if (!train) {
+            // Then create one
+            train = new Train(id);
+            train.setData(d);
+
+            if (d.hasVehicle) {
+                train.createMesh()
+                train.addToScene(scene);
+            }
+            trains[id] = train;
+        }
+
+        train.setData(d);
+        if (d.hasVehicle && !train.mesh) {
+            train.createMesh()
+            train.addToScene(scene);
+        }
+
+        if (!d.hasVehicle && train.mesh) {
+            train.deleteFromScene(scene)
+        }
+
+        if (d.hasVehicle) {
+            let pos = stopCoords[train.data.parentStopID!]
+            if (!pos) {
+                console.warn(`Stop ${train.data.parentStopID}`)// has no coordinates but hasVehicle: ${d.hasVehicle}`)
+                console.debug(train.data);
+                //console.log(stopCoords);
+                return
+            } else {
+                train.setPos(pos);
+            }
+
         }
 
         
-        let pos = stopCoords[t.parentStop!];
-        if (!pos) {
-            console.warn(`Stop ${t.parentStop} has no coordinates`)
-            console.log(t.parentStop);
-            console.log(stopCoords);
-            return
-        };
-        train.set_pos(pos);
-
-
-        //cube.position.set(pos.x, pos.y, pos.z);
-        
+        let t = new Date().getTime();
+        train.testArrivalTime = t + 3000
     })
 }
