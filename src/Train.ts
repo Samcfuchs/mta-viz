@@ -20,7 +20,7 @@ export class Train {
     scene : THREE.Scene;
     staticData : StaticRoute;
 
-    static SIZE : number = .002
+    static SIZE : number = .001
 
     constructor(tripID : string) {
         this.tripID = tripID;
@@ -50,7 +50,8 @@ export class Train {
         if (this.mesh) return this.mesh;
         //let geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE)
         //console.log("Making mesh");
-        let geometry = new THREE.ConeGeometry(.001, .002);
+        //let geometry = new THREE.ConeGeometry(.001, .002);
+        let geometry = new THREE.BoxGeometry(Train.SIZE * 6, Train.SIZE, Train.SIZE)
 
         geometry.lookAt(new THREE.Vector3(0,0,-1));
         let material = new THREE.MeshNormalMaterial();
@@ -101,44 +102,43 @@ export class Train {
         if (!this.mesh) return;
         time = time ?? new Date().getTime()
 
-        let nextStop = this.data.stopTimes[0][0]
+        //let nextStop = this.data.stopTimes[0][0]
+        //console.log(time);
+        let nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
+
         let shortTripID = this.tripID.split('_')[1]
-        let altSchedule = staticStopTimes[shortTripID]
-        if (!nextStop) {
-            if (altSchedule) {
-                //console.warn(`But it does have a schedule in static data under ${shortTripID}`)
-                nextStop = altSchedule['stops'][2]
-                //if (!nextStop) {console.error("whoops")}
-            }
-
-        }
 
         if (!nextStop) {
-            console.warn(`Train ${shortTripID} has no schedule anywhere`);
-            return;
+            //console.warn("FUCK")
+            return
         }
+
+        //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
         let nextCoords = stopCoords[nextStop.stopID]
         if (!nextCoords) {
-            //console.warn(`Stop ${nextStop.stopId} has no coords`);
+            console.warn(`Stop ${nextStop.stopID} has no coords`);
             return
         };
 
         let arrivalTime = +(nextStop.stopTime) * 1000;
 
-        nextCoords = stopCoords['A33']
-        arrivalTime = this.testArrivalTime;
+        //nextCoords = stopCoords['A33']
+        //arrivalTime = this.testArrivalTime;
 
         let difference = new THREE.Vector3().subVectors(nextCoords, this.mesh.position)
         let dt = arrivalTime - time;
+        dt = dt < 0 ? 2000 : dt;
 
         //if (dt < 0) dt = 0;
+        //let targetAngle = difference.clone().normalize()
+        //var qrot = new THREE.Quaternion().setFromUnitVectors(this.mesh.rotation.to, targetAngle)
 
         //this.setPos(this.mesh.position.addScaledVector(difference, ms/dt*100))
-        //this.mesh.position.addScaledVector(difference, ms/dt*1);
-        //this.mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .01)
+        this.mesh.position.addScaledVector(difference, ms/dt*1);
+        this.mesh.lookAt(new THREE.Vector3(0,0,0))
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
         //console.log("updating")
-        this.mesh.rotateZ(Math.sin(ms/4000)*10);
+        //this.mesh.rotateZ(Math.sin(ms/4000)*10);
         //this.setHeading(180);
     }
 }

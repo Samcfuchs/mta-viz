@@ -107,7 +107,7 @@ export function initScene() {
 
             // Temporary debug behavior
             if (kv[1].mesh) {
-                kv[1].mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .00001);
+                //kv[1].mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .00001);
             }
         })
 
@@ -227,11 +227,12 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
 
         nTotal++;
         let rtd = realTimeData[key];
-        let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID))
+        let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
+                         Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.shortTripID))
         
         if(!staticData) {
             // No match with static data
-            console.warn(`No static data found for train ${key} w/ ${rtd.tripID}`)
+            console.warn(`No static data found for train ${key} w/ ${rtd.shortTripID}`)
             return;
         }
 
@@ -243,6 +244,8 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
 
             if (rtd.hasVehicle) {
                 train.createMesh();
+                let pos = stopCoords[train.data.parentStopID!]
+                train.setPos(pos);
                 train.addToScene(scene);
             }
 
@@ -252,18 +255,6 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
         // could also add static data here
         train.setData(rtd, staticData);
         train.manageDataChange();
-
-        if (rtd.hasVehicle) {
-            let pos = stopCoords[train.data.parentStopID!]
-            if (!pos) {
-                console.warn(`Stop ${train.data.parentStopID} has no coordinates for train ${train.data}`)
-                //console.log(stopCoords);
-                return
-            } else {
-                train.setPos(pos);
-            }
-
-        } 
 
         nLive++;
     })

@@ -56,7 +56,7 @@ function parseStopTimesToJSON(text: string) : any {
             }
         }
 
-        data_obj[key].stops[seq] = { stopID: stop_id, stopTime: time }
+        data_obj[key].stops[seq] = { stopID: stop_id, stopTime: time } // Must parse HH:MM:SS timestamp into epoch time
     });
 
     return data_obj;
