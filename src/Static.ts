@@ -22,13 +22,15 @@ function parseShapesToJSON(text: string) : Record<string, [number,number][]> {
 }
 
 
+export type StaticRoute = {
+    shortTripID: string,
+    longTripID: string,
+    stops : {stopID: string, stopTime : string}[],
+    routeID: string
+}
+
 function parseStopTimesToJSON(text: string) : any {
-    const data_obj : Record<string, {
-        shortTripID: string,
-        longTripID: string,
-        stops: {stopID : string, stopTime : string}[]
-        routeID: string
-    }> = {};
+    const data_obj : Record<string, StaticRoute> = {};
     const regex = new RegExp(".*_(.+)")
 
     text.split('\n').slice(1,-1).forEach(row => {

@@ -5,7 +5,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train, TrainProps } from './Train.ts';
-import { getShapes, getStops, getRoutes, getStopTimes } from './Static.ts';
+import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
 import { string } from 'three/tsl';
 
@@ -210,8 +210,9 @@ export async function initData() {
     //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
 }
 
-export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : any,) {
+export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : Record<string,StaticRoute>) {
     stopTimes = stopTimes ? stopTimes : staticStopTimes;
+    if (!stopTimes) { console.error("Static stops not loaded"); return };
 
     console.info(`Initializing ${Object.keys(stopTimes).length} static routes 
         and ${Object.keys(realTimeData).length} live trains`);
@@ -219,14 +220,18 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : a
 
     let nLive = 0, nTotal = 0;
     // All the static routes appear in the realtime data.
+    
     Object.keys(realTimeData).forEach(key => {
+        // rtd.tripID: "091200_L..N" (also the key)
+        // staticData.key = "AFA24GEN-1038-Sunday-00_000600_1..S03R"
+
         nTotal++;
         let rtd = realTimeData[key];
-        let staticData = stopTimes[rtd.tripID];
-        //staticData = staticData ?? stopTimes[rtd.tripID]
+        let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID))
+        
         if(!staticData) {
             // No match with static data
-            //console.warn(`No static data found for train ${key} w/ ${rtd.shortTripID}`)
+            console.warn(`No static data found for train ${key} w/ ${rtd.tripID}`)
             return;
         }
 
