@@ -207,7 +207,7 @@ export async function initData() {
     console.info("Static stop times: ");
     console.info(staticStopTimes);
 
-    window.setTimeout(() => {setData(staticStopTimes, pull())}, 5000)
+    //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
 }
 
 export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : any,) {
