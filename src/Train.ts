@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
 import {stopCoords, staticStopTimes } from './Viz';
+import { StaticRoute } from './Static';
 
 export type TrainProps = {
     tripId: string | undefined,
@@ -17,6 +18,7 @@ export class Train {
     data : DataChunk;
     testArrivalTime: number;
     scene : THREE.Scene;
+    staticData : StaticRoute;
 
     static SIZE : number = .002
 
@@ -31,6 +33,7 @@ export class Train {
 
     setData(realTimeData : DataChunk, staticData? : any) : void {
         this.data = realTimeData;
+        this.staticData = staticData ?? this.staticData;
         //this.manageDataChange();
     }
 
@@ -96,9 +99,7 @@ export class Train {
      */
     update(ms : number, time? : number) {
         if (!this.mesh) return;
-        if (!time) {
-            time = new Date().getTime()
-        }
+        time = time ?? new Date().getTime()
 
         let nextStop = this.data.stopTimes[0][0]
         let shortTripID = this.tripID.split('_')[1]
@@ -116,13 +117,13 @@ export class Train {
             console.warn(`Train ${shortTripID} has no schedule anywhere`);
             return;
         }
-        let nextCoords = stopCoords[nextStop.stopId]
+        let nextCoords = stopCoords[nextStop.stopID]
         if (!nextCoords) {
             //console.warn(`Stop ${nextStop.stopId} has no coords`);
             return
         };
 
-        let arrivalTime = Number(nextStop.time) * 1000;
+        let arrivalTime = +(nextStop.stopTime) * 1000;
 
         nextCoords = stopCoords['A33']
         arrivalTime = this.testArrivalTime;

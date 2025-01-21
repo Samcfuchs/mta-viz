@@ -19,7 +19,7 @@ function inspect(feed : GtfsRealtimeBindings.transit_realtime.FeedMessage) {
 export type DataChunk = {
     tripID: string,
     trip?: { routeId : string, startDate: string, startTime: string, tripId : string } | GtfsRealtimeBindings.transit_realtime.ITripDescriptor
-    stopTimes: Array<{time: number | Number, stopId: string}>[],
+    stopTimes: { stopTime: number, stopID: string }[][],
     hasVehicle: boolean,
     parentStopID?: string,
     vehicleTimestamp?: number,
@@ -38,7 +38,7 @@ function consolidate(feed : GtfsRealtimeBindings.transit_realtime.FeedMessage) :
             if (!trips[tripID]) trips[tripID] = { 
                 tripID:tripID, 
                 trip:update.trip, 
-                stopTimes:[], 
+                stopTimes:[],
                 hasVehicle: false,
                 shortTripID: tripID.split('_')[1],
             }
@@ -46,10 +46,10 @@ function consolidate(feed : GtfsRealtimeBindings.transit_realtime.FeedMessage) :
             let t : DataChunk = trips[tripID]
 
             // Soonest STU is first, always
-            let customUpdates : {time: Number, stopId: string}[] = update.stopTimeUpdate!.map(stu => {
+            let customUpdates : {stopTime: number, stopID: string}[] = update.stopTimeUpdate!.map(stu => {
                 return {
-                    time: Number((stu.arrival ?? stu.departure)!.time),
-                    stopId: String(stu.stopId)
+                    stopTime: +((stu.arrival ?? stu.departure)!.time!),
+                    stopID: String(stu.stopId)
                 }
             })
 
@@ -64,7 +64,7 @@ function consolidate(feed : GtfsRealtimeBindings.transit_realtime.FeedMessage) :
             let t : DataChunk = trips[tripID]
 
             t.parentStopID = entity.vehicle.stopId!;
-            t.vehicleTimestamp = Number(entity.vehicle.timestamp);
+            t.vehicleTimestamp = +(entity.vehicle.timestamp!);
             t.currentStopSequence = entity.vehicle.currentStopSequence ?? -1;
             t.status = entity.vehicle.currentStatus ?? -1;
             t.hasVehicle = true;

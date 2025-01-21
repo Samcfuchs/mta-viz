@@ -25,7 +25,7 @@ function parseShapesToJSON(text: string) : Record<string, [number,number][]> {
 export type StaticRoute = {
     shortTripID: string,
     longTripID: string,
-    stops : {stopID: string, stopTime : string}[],
+    stops : {stopID: string, stopTime : number}[],
     routeID: string
 }
 
@@ -39,7 +39,7 @@ function parseStopTimesToJSON(text: string) : any {
 
         let trip_id = items[0];
         let stop_id = items[1];
-        let time = items[2];
+        let time = +items[2];
         let seq = Number(items[4]);
 
         let short_trip_id = regex.exec(trip_id)![length];

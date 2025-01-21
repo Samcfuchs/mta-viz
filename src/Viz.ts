@@ -238,8 +238,8 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
         let train : Train = trains[rtd.tripID]
         if (!train) {
             // Create one
-            train = new Train(rtd.tripID) 
-            train.setData(rtd);
+            train = new Train(rtd.tripID)
+            train.setData(rtd, staticData);
 
             if (rtd.hasVehicle) {
                 train.createMesh();
@@ -250,8 +250,20 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
         }
 
         // could also add static data here
-        train.setData(rtd);
+        train.setData(rtd, staticData);
         train.manageDataChange();
+
+        if (rtd.hasVehicle) {
+            let pos = stopCoords[train.data.parentStopID!]
+            if (!pos) {
+                console.warn(`Stop ${train.data.parentStopID} has no coordinates for train ${train.data}`)
+                //console.log(stopCoords);
+                return
+            } else {
+                train.setPos(pos);
+            }
+
+        } 
 
         nLive++;
     })
@@ -259,6 +271,7 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
 
 }
 
+/*
 export function update(data : Record<string, DataChunk>) {
     console.info(`Updating ${Object.keys(data).length} trains`);
     //console.info(data);
@@ -308,3 +321,4 @@ export function update(data : Record<string, DataChunk>) {
         train.testArrivalTime = t + 3000
     })
 }
+*/
