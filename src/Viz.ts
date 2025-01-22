@@ -102,12 +102,16 @@ export function initScene() {
     dirLight.position.set(0,100,100);
     dirLight.castShadow = createShadows;
     dirLight.shadow.radius = 2;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.top = 100;
-    dirLight.shadow.camera.bottom = -100;
-    dirLight.shadow.camera.right = 100;
-    dirLight.shadow.camera.left = -100;
+
+    const shadowRes = 4096;
+    dirLight.shadow.mapSize.width = shadowRes;
+    dirLight.shadow.mapSize.height = shadowRes;
+
+    const shadowBounds = 200;
+    dirLight.shadow.camera.top = shadowBounds;
+    dirLight.shadow.camera.bottom = -shadowBounds;
+    dirLight.shadow.camera.right = shadowBounds;
+    dirLight.shadow.camera.left = -shadowBounds;
     scene.add(dirLight);
 
     const ground = new THREE.PlaneGeometry(COORD_SCALE,COORD_SCALE);
