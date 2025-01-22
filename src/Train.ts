@@ -19,6 +19,7 @@ export class Train {
     testArrivalTime: number;
     scene : THREE.Scene;
     staticData : StaticRoute;
+    nextStop : { stopTime: number; stopID: string; } | undefined;
 
     static SIZE : number = 1;
 
@@ -44,11 +45,14 @@ export class Train {
     manageDataChange() {
         if (this.data.hasVehicle && !this.mesh) this.createMesh();
         if (!this.data.hasVehicle && this.mesh && this.scene) this.deleteFromScene(this.scene!);
+
+        let time = new Date().getTime()
+        this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
     }
 
     createMesh() : THREE.Mesh {
         if (this.mesh) return this.mesh;
-        let geometry = new THREE.BoxGeometry(Train.SIZE * 6, Train.SIZE, Train.SIZE)
+        let geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
 
         //geometry.lookAt(new THREE.Vector3(0,0,-1));
         let material = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 })
@@ -122,26 +126,23 @@ export class Train {
 
         //let nextStop = this.data.stopTimes[0][0]
         //console.log(time);
-        let nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
+        this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
 
         let shortTripID = this.tripID.split('_')[1]
 
-        if (!nextStop) {
+        if (!this.nextStop) {
             //console.warn("FUCK")
             return
         }
 
         //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
-        let nextCoords = stopCoords[nextStop.stopID]
+        let nextCoords = stopCoords[this.nextStop.stopID]
         if (!nextCoords) {
-            console.warn(`Stop ${nextStop.stopID} has no coords`);
+            console.warn(`Stop ${this.nextStop.stopID} has no coords`);
             return
         };
 
-        let arrivalTime = +(nextStop.stopTime) * 1000;
-
-        //nextCoords = stopCoords['A33']
-        //arrivalTime = this.testArrivalTime;
+        let arrivalTime = +(this.nextStop.stopTime) * 1000;
 
         let difference = new THREE.Vector3().subVectors(nextCoords, this.mesh.position)
         let dt = arrivalTime - time;
@@ -154,8 +155,8 @@ export class Train {
         //this.setPos(this.mesh.position.addScaledVector(difference, ms/dt*100))
         this.mesh.position.addScaledVector(difference, ms/dt*1);
 
-        this.setHeadingFromVector(difference);
-        //this.mesh.lookAt(new THREE.Vector3(0,0,0))
+        //this.setHeadingFromVector(difference);
+        this.mesh.lookAt(nextCoords);
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
         //console.log("updating")
         //this.mesh.rotateZ(Math.sin(ms/4000)*10);
