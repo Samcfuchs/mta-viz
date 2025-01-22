@@ -7,7 +7,6 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train, TrainProps } from './Train.ts';
 import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
-import { string } from 'three/tsl';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -53,6 +52,7 @@ function putSurface(normal:THREE.Vector3) : THREE.Mesh {
 export let stopCoords : Record<string, THREE.Vector3> = {};
 let scene : THREE.Scene;
 export let staticStopTimes : any;
+export const createShadows = true;
 
 export function initScene() {
     const mount = document.getElementById('renderWindow') as HTMLDivElement;
@@ -61,6 +61,7 @@ export function initScene() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = createShadows;
     mount.appendChild(renderer.domElement);
 
     const labelRenderer = new CSS2DRenderer();
@@ -74,7 +75,7 @@ export function initScene() {
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.001, 1000);
 
     camera.up.set(0,0,1);
-    camera.position.set(0,-.3,.3);
+    camera.position.set(0,-.1,.1);
     camera.lookAt(0,0,0);
     const controls = new MapControls(camera, renderer.domElement);
     //const controls = new MapControls(camera, renderer.domElement);
@@ -83,6 +84,27 @@ export function initScene() {
     //controls.dampingFactor = .05;
 
     controls.update(.01);
+
+    const light = new THREE.AmbientLight(0xffffff, .5);
+    //scene.add(light);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 5);
+    dirLight.position.set(0,1,1);
+    dirLight.castShadow = createShadows;
+    dirLight.shadow.radius = .01
+    dirLight.shadow.mapSize.width = 1e7;
+    dirLight.shadow.mapSize.height = 1e7;
+    scene.add(dirLight);
+
+    const ground = new THREE.PlaneGeometry(1,1);
+    const groundMat = new THREE.MeshStandardMaterial({color: 0x2d3030});
+    //const groundMat = new THREE.MeshStandardMaterial({color: 0xffffff});
+    const groundMesh = new THREE.Mesh(ground, groundMat);
+    groundMesh.position.set(0,0,-.001);
+    groundMesh.lookAt(new THREE.Vector3(0,0,0));
+    groundMesh.castShadow = createShadows;
+    groundMesh.receiveShadow = createShadows;
+    scene.add(groundMesh)
 
     let target = putCube(controls.target)
     //scene.add(target);

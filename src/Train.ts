@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
-import {stopCoords, staticStopTimes } from './Viz';
+import {stopCoords, staticStopTimes, createShadows } from './Viz';
 import { StaticRoute } from './Static';
 
 export type TrainProps = {
@@ -54,9 +54,13 @@ export class Train {
         let geometry = new THREE.BoxGeometry(Train.SIZE * 6, Train.SIZE, Train.SIZE)
 
         geometry.lookAt(new THREE.Vector3(0,0,-1));
-        let material = new THREE.MeshNormalMaterial();
+        //let material = new THREE.MeshNormalMaterial();
+        let material = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 })
         let obj = new THREE.Mesh(geometry, material);
         this.mesh = obj;
+
+        obj.castShadow = createShadows;
+        obj.receiveShadow = false;
 
         return obj;
     }
@@ -79,6 +83,12 @@ export class Train {
         let x = Math.cos(rads);
 
         this.mesh.setRotationFromAxisAngle(new THREE.Vector3(0,0,1), rads)
+    }
+
+    setHeadingFromVector(v:THREE.Vector3) {
+        let ang = Math.atan2(v.y, v.x);
+        //ang = (Math.PI / 2) - ang;
+        this.mesh.setRotationFromAxisAngle(new THREE.Vector3(0,0,1), ang)
     }
 
     addToScene(s : THREE.Scene) {
@@ -135,7 +145,9 @@ export class Train {
 
         //this.setPos(this.mesh.position.addScaledVector(difference, ms/dt*100))
         this.mesh.position.addScaledVector(difference, ms/dt*1);
-        this.mesh.lookAt(new THREE.Vector3(0,0,0))
+
+        this.setHeadingFromVector(difference);
+        //this.mesh.lookAt(new THREE.Vector3(0,0,0))
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
         //console.log("updating")
         //this.mesh.rotateZ(Math.sin(ms/4000)*10);
