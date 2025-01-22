@@ -5,6 +5,11 @@ import Train, { TrainProps } from './Train'
 const ACE_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace";
 const IRT_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs";
 const L_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
+const BDFM_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
+const G_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g"
+const JZ_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz"
+const NQRW_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw"
+const SIR_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
 
 
 let trains = [];
@@ -107,8 +112,12 @@ async function fetch_all() {
 
     data = {
         ...await fetch_data(ACE_API_URL),
-        ...await fetch_data(IRT_API_URL),
-        ...await fetch_data(L_API_URL)
+        ...await fetch_data(BDFM_API_URL),
+        ...await fetch_data(G_API_URL),
+        ...await fetch_data(JZ_API_URL),
+        ...await fetch_data(NQRW_API_URL),
+        ...await fetch_data(L_API_URL),
+        ...await fetch_data(IRT_API_URL)
     }
     //console.log(data);
 }

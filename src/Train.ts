@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
-import {stopCoords, staticStopTimes, createShadows } from './Viz';
+import {stopCoords, staticStopTimes, createShadows, COORD_SCALE } from './Viz';
 import { StaticRoute } from './Static';
 
 export type TrainProps = {
@@ -20,7 +20,7 @@ export class Train {
     scene : THREE.Scene;
     staticData : StaticRoute;
 
-    static SIZE : number = .001
+    static SIZE : number = 1;
 
     constructor(tripID : string) {
         this.tripID = tripID;
@@ -48,13 +48,9 @@ export class Train {
 
     createMesh() : THREE.Mesh {
         if (this.mesh) return this.mesh;
-        //let geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE)
-        //console.log("Making mesh");
-        //let geometry = new THREE.ConeGeometry(.001, .002);
         let geometry = new THREE.BoxGeometry(Train.SIZE * 6, Train.SIZE, Train.SIZE)
 
-        geometry.lookAt(new THREE.Vector3(0,0,-1));
-        //let material = new THREE.MeshNormalMaterial();
+        //geometry.lookAt(new THREE.Vector3(0,0,-1));
         let material = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 })
         let obj = new THREE.Mesh(geometry, material);
         this.mesh = obj;
@@ -70,9 +66,15 @@ export class Train {
             console.warn("Attempted to set position but there's no mesh")
             return;
         }
+
+        if (!v) {
+            console.warn("Attempted to setPos to a null vector");
+            return;
+        }
         //let rand = new THREE.Vector3().randomDirection()
-        //let vec = v.addScaledVector(rand, .0005);
-        let vec = v;
+        let vec = v.clone()
+        //vec.z = 2;
+        //let vec = v;
         this.mesh.position.set(...vec.toArray());
         //this.mesh.lookAt(new THREE.Vector3(0,100,0))
     }
@@ -89,6 +91,12 @@ export class Train {
         let ang = Math.atan2(v.y, v.x);
         //ang = (Math.PI / 2) - ang;
         this.mesh.setRotationFromAxisAngle(new THREE.Vector3(0,0,1), ang)
+    }
+
+    approachVectorHeading(v:THREE.Vector3, rate:number) {
+        //let targetAngle = Math.atan2(v.y, v.z);
+        //let currAngle = Math.atan2(this.mesh.get)
+        //this.mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), rate)
     }
 
     addToScene(s : THREE.Scene) {

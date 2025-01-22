@@ -11,11 +11,13 @@ import { DataChunk, pull } from './RealTime.ts';
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
 const CENTER = new THREE.Vector3(CENTER_LON, CENTER_LAT, 0)
+export const COORD_SCALE = 1e3;
 
 let trains : Record<string, Train> = {};
 
 function coordinateLL(lat:number, lon:number) {
     let v = new THREE.Vector3(lon, lat, 0).sub(CENTER);
+    v.multiplyScalar(COORD_SCALE);
     //console.log(v.toArray());
     return v
 }
@@ -61,6 +63,7 @@ export function initScene() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = createShadows;
     mount.appendChild(renderer.domElement);
 
@@ -75,34 +78,42 @@ export function initScene() {
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.001, 1000);
 
     camera.up.set(0,0,1);
-    camera.position.set(0,-.1,.1);
+    camera.position.set(0,-10,10);
     camera.lookAt(0,0,0);
     const controls = new MapControls(camera, renderer.domElement);
     //const controls = new MapControls(camera, renderer.domElement);
-    controls.maxPolarAngle = Math.PI * .48;
+    controls.maxPolarAngle = Math.PI * .43;
     controls.enableDamping = true;
+    controls.maxZoom = 1;
+    controls.minZoom = 1;
+    controls.maxDistance = 100;
+    controls.minDistance = 5;
     //controls.dampingFactor = .05;
 
     controls.update(.01);
 
     const light = new THREE.AmbientLight(0xffffff, .5);
-    //scene.add(light);
+    scene.add(light);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 5);
-    dirLight.position.set(0,1,1);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 4);
+    dirLight.position.set(0,100,100);
     dirLight.castShadow = createShadows;
-    dirLight.shadow.radius = .01
-    dirLight.shadow.mapSize.width = 1e7;
-    dirLight.shadow.mapSize.height = 1e7;
+    dirLight.shadow.radius = 2;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.camera.top = 100;
+    dirLight.shadow.camera.bottom = -100;
+    dirLight.shadow.camera.right = 100;
+    dirLight.shadow.camera.left = -100;
     scene.add(dirLight);
 
-    const ground = new THREE.PlaneGeometry(1,1);
+    const ground = new THREE.PlaneGeometry(COORD_SCALE,COORD_SCALE);
     const groundMat = new THREE.MeshStandardMaterial({color: 0x2d3030});
     //const groundMat = new THREE.MeshStandardMaterial({color: 0xffffff});
     const groundMesh = new THREE.Mesh(ground, groundMat);
-    groundMesh.position.set(0,0,-.001);
+    groundMesh.position.set(0,0,-2);
     groundMesh.lookAt(new THREE.Vector3(0,0,0));
-    groundMesh.castShadow = createShadows;
+    groundMesh.castShadow = false;
     groundMesh.receiveShadow = createShadows;
     scene.add(groundMesh)
 
@@ -160,9 +171,9 @@ function addStop(row: any) {
 
     if ((row['stop_id'].slice(-1) == 'N') || (row['stop_id'].slice(-1) == 'S')) return;
     //let geom = new THREE.CircleGeometry(.0004);
-    let geom = new THREE.SphereGeometry(.0002);
-    geom.lookAt(new THREE.Vector3(0, 0, 1));
-    geom.translate(v.x, v.y, v.z)
+    let geom = new THREE.SphereGeometry(.5);
+    //geom.lookAt(new THREE.Vector3(0, 0, 1));
+    geom.translate(v.x, v.y, -1);
 
 
     let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
@@ -193,9 +204,10 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
     let lc = lineColors ? (route:string) => lineColors[route] : (route:string) => 'EEEEEE'
 
     Object.entries(json).forEach(([id, ll]) => {
-        let v : THREE.Vector3[] = ll.map(xy => coordinateLL(...xy));
+        let v : THREE.Vector3[] = ll.map(xy => coordinateLL(...xy).add(new THREE.Vector3(0,0,-1)));
         let route: string = id.split('.')[0];
-        const lineM = new LineMaterial({ color: `#${lc(route)}`, linewidth: 10 });
+        const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .5, worldUnits: true });
+        //const lineM = new THREE.MeshStandardMaterial({ color: `#${lc(route)}` })
         try {
             const lineG = new LineGeometry().setFromPoints(v.filter(n => n));
             const line = new Line2(lineG, lineM);
