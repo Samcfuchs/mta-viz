@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
-import {stopCoords, staticStopTimes, createShadows, COORD_SCALE } from './Viz';
+import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel } from './Viz';
 import { StaticRoute } from './Static';
 
 export type TrainProps = {
@@ -21,6 +21,8 @@ export class Train {
     staticData : StaticRoute;
     nextStop : { stopTime: number; stopID: string; } | undefined;
 
+    static standardMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 });
+    static highlightMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness:1 });
     static SIZE : number = 1;
 
     constructor(tripID : string) {
@@ -54,15 +56,24 @@ export class Train {
         if (this.mesh) return this.mesh;
         let geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
 
-        //geometry.lookAt(new THREE.Vector3(0,0,-1));
-        let material = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 })
+        let material = Train.standardMaterial;
         let obj = new THREE.Mesh(geometry, material);
         this.mesh = obj;
 
         obj.castShadow = createShadows;
         obj.receiveShadow = false;
 
+        obj.name = this.tripID;
+
         return obj;
+    }
+
+    highlight(state : boolean) {
+        if (!this.mesh) return;
+        if (state) {
+            this.mesh.material = Train.highlightMaterial;
+            dataPanel!.textContent = `${this.tripID}`;
+        } else this.mesh.material = Train.standardMaterial;
     }
 
     setPos(v:THREE.Vector3) {

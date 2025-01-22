@@ -55,6 +55,7 @@ export let stopCoords : Record<string, THREE.Vector3> = {};
 let scene : THREE.Scene;
 export let staticStopTimes : any;
 export const createShadows = true;
+export const dataPanel = document.getElementById('dataView');
 
 export function initScene() {
     const mount = document.getElementById('renderWindow') as HTMLDivElement;
@@ -123,6 +124,50 @@ export function initScene() {
     let start : number;
     let prev : number;
 
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.render(scene, camera);
+
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.render(scene,camera)
+    }
+
+    const mouse = new THREE.Vector2;
+    const raycaster = new THREE.Raycaster()
+    let intersects: THREE.Intersection[];
+    let intersectedObject : THREE.Object3D | null;
+
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
+    function onDocumentMouseMove(event: MouseEvent) {
+        mouse.set(
+            (event.clientX / renderer.domElement.clientWidth) * 2 - 1,
+            -((event.clientY / renderer.domElement.clientHeight) * 2 - 1)
+        );
+
+        raycaster.setFromCamera(mouse, camera);
+        intersects = raycaster.intersectObjects(Object.keys(trains).map(t => trains[t].mesh).filter(t=>t))
+
+        if (intersects.length > 0) {
+            intersectedObject = intersects[0].object
+        } else {
+            intersectedObject = null;
+            dataPanel!.textContent = "";
+        }
+
+        //console.log(intersectedObject?.name);
+        Object.keys(trains).forEach(tripid => {
+            if (intersectedObject && tripid == intersectedObject.name) {
+                trains[tripid].highlight(true);
+            } else {
+                trains[tripid].highlight(false);
+            }
+        })
+            
+    }
+
     function animate(timestamp:number) {
         requestAnimationFrame(animate);
 
@@ -143,6 +188,8 @@ export function initScene() {
                 //kv[1].mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .00001);
             }
         })
+
+        
 
         controls.update(.01);
         //target.position.set(...controls.target.toArray())

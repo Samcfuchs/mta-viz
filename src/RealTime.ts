@@ -95,7 +95,7 @@ async function fetch_data(URL:string) : Promise<Record<string, DataChunk>> {
         .then(buf => GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(buf)))
         //.then(inspect)
         .then(consolidate)
-        .then(d => {console.info(d); return d})
+        //.then(d => {console.info(d); return d})
         ;
 
     return data;

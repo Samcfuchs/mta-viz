@@ -23,6 +23,11 @@ aside {
   top: 0;
   left: 0;
   background-color: #eee1;
+  pointer-events: none;
+  border: 1px solid white;
+  padding: 10px;
+  color: white;
+  font-family: sans-serif;
 }
 
 div.renderWindow {
