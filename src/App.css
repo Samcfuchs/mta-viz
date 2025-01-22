@@ -14,16 +14,26 @@ body {
   /* font-size: 50px; */
 }
 
-aside {
+aside#dataView {
   height: 100%;
   width: 500px;
   overflow-y: scroll;
   position: fixed;
-  display: inline-block;
+  display: none;
   top: 0;
   left: 0;
   background-color: #eee1;
   pointer-events: none;
+  border: 1px solid white;
+  padding: 10px;
+  color: white;
+  font-family: sans-serif;
+}
+
+aside#hover {
+  display: none;
+  position: absolute;
+  background-color: #000f;
   border: 1px solid white;
   padding: 10px;
   color: white;

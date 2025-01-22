@@ -1,23 +1,15 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
-import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel } from './Viz';
+import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover } from './Viz';
 import { StaticRoute } from './Static';
-
-export type TrainProps = {
-    tripId: string | undefined,
-    parentStop : string | undefined,
-    status: number | undefined,
-    routeId: string | undefined | null,
-    direction: string | undefined
-};
 
 export class Train {
     mesh : THREE.Mesh;
-    props : TrainProps;
+    scene : THREE.Scene;
+
     tripID : string;
     data : DataChunk;
     testArrivalTime: number;
-    scene : THREE.Scene;
     staticData : StaticRoute;
     nextStop : { stopTime: number; stopID: string; } | undefined;
 
@@ -28,10 +20,6 @@ export class Train {
     constructor(tripID : string) {
         this.tripID = tripID;
 
-    }
-
-    setProps(t : TrainProps) : void {
-        this.props = t;
     }
 
     setData(realTimeData : DataChunk, staticData? : any) : void {
@@ -68,11 +56,22 @@ export class Train {
         return obj;
     }
 
+    toString() : string {
+        return [
+            `Line: ${this.staticData.routeID}`,
+            `TripID: ${this.tripID}`,
+            `Parent stop: ${this.data.parentStopID}`,
+            `Next stop: ${this.nextStop?.stopID}`,
+            `\tArrival: ${(new Date((this.nextStop?.stopTime ?? 0) * 1000)).toLocaleTimeString('en-us')}`,
+        ].join('\n');
+    }
+
     highlight(state : boolean) {
         if (!this.mesh) return;
         if (state) {
             this.mesh.material = Train.highlightMaterial;
-            dataPanel!.textContent = `${this.tripID}`;
+            dataPanel!.innerHTML = '<pre>' + this.toString() + '</pre>';
+            dataHover!.innerHTML = '<pre>' + this.toString() + '</pre>';
         } else this.mesh.material = Train.standardMaterial;
     }
 

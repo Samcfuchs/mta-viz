@@ -1,6 +1,5 @@
 
 import GtfsRealtimeBindings from "gtfs-realtime-bindings"
-import Train, { TrainProps } from './Train'
 
 const ACE_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace";
 const IRT_API_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs";

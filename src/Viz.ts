@@ -4,9 +4,10 @@ import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
-import { Train, TrainProps } from './Train.ts';
+import { Train } from './Train.ts';
 import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
+import { string } from 'three/tsl';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -56,6 +57,7 @@ let scene : THREE.Scene;
 export let staticStopTimes : any;
 export const createShadows = true;
 export const dataPanel = document.getElementById('dataView');
+export const dataHover = document.getElementById('hover');
 
 export function initScene() {
     const mount = document.getElementById('renderWindow') as HTMLDivElement;
@@ -152,9 +154,15 @@ export function initScene() {
 
         if (intersects.length > 0) {
             intersectedObject = intersects[0].object
+
+            dataHover!.style.left = `${event.clientX}px`;
+            dataHover!.style.top = `${event.clientY}px`;
+            dataHover!.style.display = 'block';
         } else {
             intersectedObject = null;
             dataPanel!.textContent = "";
+            dataHover!.textContent = "";
+            dataHover!.style.display = 'none';
         }
 
         //console.log(intersectedObject?.name);
