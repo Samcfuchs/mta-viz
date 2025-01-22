@@ -1,50 +1,15 @@
-# React + TypeScript + Vite
+# MTA Live Data Visualization
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![`A screenshot of the app`](image.png)
 
-Currently, two official plugins are available:
+This app provides a 3-D interactive view of the live state of the NYC
+subway system, as data is provided through the MTA GTFS-RT API. Train
+positions are interpolated from the most recent data, as a "best guess"
+based on the train's anticipated arrival time at its next station.
+Although this is inexact, it is *no less* accurate than the information
+the MTA itself has on the tracks that have not implemented CBTC
+(Communications-Based Train Control). To my knowledge, CBTC data from
+the routes that have implemented it (the L and 7 lines) is not yet
+available through a real-time API. You can read more about the MTA's
+CBTC rollout [here](https://new.mta.info/project/cbtc-signal-upgrades).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```

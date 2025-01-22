@@ -15,7 +15,7 @@ export class Train {
 
     static standardMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 });
     static highlightMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness:1 });
-    static SIZE : number = 1;
+    static SIZE : number = 0.5;
 
     constructor(tripID : string) {
         this.tripID = tripID;
@@ -56,13 +56,19 @@ export class Train {
         return obj;
     }
 
+    static timestampString(t : number | undefined) {
+        if (!t) return "none";
+        return new Date((t) * 1000).toLocaleTimeString('en-us');
+    }
+
     toString() : string {
         return [
             `Line: ${this.staticData.routeID}`,
             `TripID: ${this.tripID}`,
             `Parent stop: ${this.data.parentStopID}`,
-            `Next stop: ${this.nextStop?.stopID}`,
-            `\tArrival: ${(new Date((this.nextStop?.stopTime ?? 0) * 1000)).toLocaleTimeString('en-us')}`,
+            `Next stop: ${this.nextStop?.stopID} @ ${Train.timestampString(this.nextStop?.stopTime)}`,
+            `Schedule: \n${this.data.stopTimes[0].map(stop => `\t${stop.stopID} @ ${Train.timestampString(stop.stopTime)}`).join('\n')}`,
+            //`Static schedule: \n${this.staticData.stops.map(stop => `\t${stop.stopID} @ ${Train.timestampString(stop.stopTime)}`).join('\n')}`
         ].join('\n');
     }
 
