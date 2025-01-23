@@ -7,17 +7,17 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train } from './Train.ts';
 import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
-import { string } from 'three/tsl';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
-const CENTER = new THREE.Vector3(CENTER_LON, CENTER_LAT, 0)
+//const CENTER = new THREE.Vector3(CENTER_LON, CENTER_LAT, 0)
+const CENTER = new THREE.Vector2(CENTER_LON, CENTER_LAT)
 export const COORD_SCALE = 1e3;
 
 let trains : Record<string, Train> = {};
 
-function coordinateLL(lat:number, lon:number) {
-    let v = new THREE.Vector3(lon, lat, 0).sub(CENTER);
+function coordinateLL(lat:number, lon:number) : THREE.Vector2 {
+    let v = new THREE.Vector2(lon, lat).sub(CENTER);
     v.multiplyScalar(COORD_SCALE);
     //console.log(v.toArray());
     return v
@@ -31,11 +31,18 @@ function putCube(pos:THREE.Vector3) : THREE.Mesh {
     return cube
 }
 
-function putSphere(pos:THREE.Vector3) : THREE.Mesh {
-    const geometry = new THREE.SphereGeometry(.01);
+function putSphere(pos:THREE.Vector3, size? : number) : THREE.Mesh {
+    const geometry = new THREE.SphereGeometry(size ?? 1);
     const material = new THREE.MeshNormalMaterial();
     const obj = new THREE.Mesh(geometry, material);
     obj.position.set(pos.x, pos.y, pos.z);
+    return obj;
+}
+
+function drawLine(a : THREE.Vector2, b : THREE.Vector2, color? : any) {
+    const geometry = new THREE.BufferGeometry().setFromPoints([a,b])
+    const material = new THREE.LineBasicMaterial({ color: color ?? 0xffffff })
+    const obj = new THREE.Line(geometry, material);
     return obj;
 }
 
@@ -52,7 +59,7 @@ function putSurface(normal:THREE.Vector3) : THREE.Mesh {
 
 }
 
-export let stopCoords : Record<string, THREE.Vector3> = {};
+export let stopCoords : Record<string, THREE.Vector2> = {};
 let scene : THREE.Scene;
 export let staticStopTimes : any;
 export const createShadows = true;
@@ -87,8 +94,8 @@ export function initScene() {
     //const controls = new MapControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI * .43;
     controls.enableDamping = true;
-    controls.maxZoom = 1;
-    controls.minZoom = 1;
+    //controls.maxZoom = 1;
+    //controls.minZoom = 0;
     controls.maxDistance = 100;
     controls.minDistance = 5;
     //controls.dampingFactor = .05;
@@ -246,7 +253,7 @@ function addStop(row: any) {
     stopDiv.style.backgroundColor = 'transparent';
 
     const stopLabel = new CSS2DObject(stopDiv);
-    stopLabel.position.set(...v.toArray());
+    stopLabel.position.set(v.x, v.y, 0);
     stopLabel.center.set(0,4);
     stop.add(stopLabel);
 
@@ -257,25 +264,86 @@ function addStop(row: any) {
  * Draw 3D subway lines in scene
  * @param json Routes from static data
  */
-function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Record<string,string>) {
+function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Record<string,string>, offset? : number) {
+    offset = offset ?? .5;
     console.log("Drawing lines");
 
     let lc = lineColors ? (route:string) => lineColors[route] : (route:string) => 'EEEEEE'
 
     Object.entries(json).forEach(([id, ll]) => {
-        let v : THREE.Vector3[] = ll.map(xy => coordinateLL(...xy).add(new THREE.Vector3(0,0,-1)));
-        let route: string = id.split('.')[0];
-        const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .5, worldUnits: true });
-        //const lineM = new THREE.MeshStandardMaterial({ color: `#${lc(route)}` })
+        let waypoints : THREE.Vector2[] = ll.map(xy => coordinateLL(...xy));
+        let route: string = id.split('..')[0];
+        let track: string = id.split('..')[1];
+        const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .15, worldUnits: true });
+
         try {
-            const lineG = new LineGeometry().setFromPoints(v.filter(n => n));
+            let linePoints : THREE.Vector2[] = []
+            let a, b, c, bisector, v1, v2;
+
+            b = waypoints[0].clone();
+            c = waypoints[1].clone();
+
+            v2 = c.clone().sub(b).normalize();
+            bisector = new THREE.Vector2(v2.y, -v2.x);
+            //bisector.multiplyScalar(1);
+            linePoints.push(b.addScaledVector(bisector, offset));
+
+            for (let i=1; i<waypoints.length-1; i++) {
+                b = waypoints[i].clone();
+                a = waypoints[i-1].clone();
+                c = waypoints[i+1].clone();
+
+                v1 = a.clone().sub(b).normalize();
+                v2 = c.clone().sub(b).normalize();
+
+                let v1x2 = v1.clone().multiplyScalar(v2.length());
+                let v2x1 = v2.clone().multiplyScalar(v1.length());
+
+                bisector = v1x2.add(v2x1).normalize();
+                if (bisector.length() == 0) {
+                    bisector = new THREE.Vector2(v1.y, -v1.x);
+                }
+                if (bisector.length() == 0) {
+                    bisector = new THREE.Vector2(v2.y, -v2.x);
+                }
+
+                let handedness = v1.cross(v2) > 0 ? 1 : -1;
+                bisector.multiplyScalar(handedness);
+
+
+                if (v1.length() == 0 || v2.length() == 0) {
+                    //console.warn("Points are overlapping", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
+                    console.warn("Lat-Long are overlapping when drawing paths. This point will be omitted from the data: ", ll[i-1], ll[i], ll[i+1]);
+                    continue;
+                }
+
+                if (bisector.length() < .98) {
+                    console.error("Bisector fails", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
+                }
+                /*
+                scene.add(putSphere(new THREE.Vector3(b.x, b.y, 0),.001));
+                scene.add(drawLine(b, new THREE.Vector2(b.x + bisector.x, b.y + bisector.y), handedness > 0 ? 0x00ff00 : 0xff0000));
+                scene.add(drawLine(b, b.clone().addScaledVector(v1,0.015), 0x0000ff));
+                scene.add(drawLine(b, b.clone().addScaledVector(v2,0.015), 0xff0000));
+                */
+
+                linePoints.push(b.addScaledVector(bisector, offset));
+            }
+
+            a  = waypoints[waypoints.length-2].clone();
+            b = waypoints[waypoints.length-1].clone();
+            v1 = a.clone().sub(b).normalize();
+            bisector = new THREE.Vector2(-v1.y, v1.x);
+            //bisector.multiplyScalar(1);
+            linePoints.push(b.addScaledVector(bisector, offset));
+            
+            const lineG = new LineGeometry().setFromPoints(linePoints.filter(n => n));
             const line = new Line2(lineG, lineM);
             scene.add(line);
-        } catch {
-            console.warn("Failed to draw a line");
-            console.log(id);
-            console.log(v);
-            console.log(v.filter(n => n));
+        } catch (e) {
+            console.error(e);
+            console.error(`Failed to draw line ${id}: ${waypoints}`);
+            //console.log(waypoints.filter(n => n));
         }
     })
 }
@@ -292,6 +360,7 @@ export async function initData() {
         .then(json => {
             json.forEach((route: any) => lineColors[route['route_id']] = route['route_color'])
         }).then(() => getShapes()
+                        //.then(shapes => {return {'A..N04R': shapes['A..N04R'] }}) // Reduce to one route
                         .then(shapes => drawRoutes(shapes, lineColors))
                         .then(() => console.log("Routes loaded")));
     
@@ -354,55 +423,3 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
     console.log(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
 
 }
-
-/*
-export function update(data : Record<string, DataChunk>) {
-    console.info(`Updating ${Object.keys(data).length} trains`);
-    //console.info(data);
-    //console.log(trains);
-    Object.entries(data).forEach(kv => {
-        let d : DataChunk = kv[1];
-        let id = d.tripID;
-
-        let train : Train = trains[id];
-        if (!train) {
-            // Then create one
-            train = new Train(id);
-            train.setData(d);
-
-            if (d.hasVehicle) {
-                train.createMesh()
-                train.addToScene(scene);
-            }
-            trains[id] = train;
-        }
-
-        train.setData(d);
-        if (d.hasVehicle && !train.mesh) {
-            train.createMesh()
-            train.addToScene(scene);
-        }
-
-        if (!d.hasVehicle && train.mesh) {
-            train.deleteFromScene(scene)
-        }
-
-        if (d.hasVehicle) {
-            let pos = stopCoords[train.data.parentStopID!]
-            if (!pos) {
-                console.warn(`Stop ${train.data.parentStopID}`)// has no coordinates but hasVehicle: ${d.hasVehicle}`)
-                console.debug(train.data);
-                //console.log(stopCoords);
-                return
-            } else {
-                train.setPos(pos);
-            }
-
-        }
-
-        
-        let t = new Date().getTime();
-        train.testArrivalTime = t + 3000
-    })
-}
-*/

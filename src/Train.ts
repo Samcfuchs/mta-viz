@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { DataChunk } from './RealTime';
 import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover } from './Viz';
 import { StaticRoute } from './Static';
+import { ThreeMFLoader } from 'three/examples/jsm/Addons.js';
 
 export class Train {
     mesh : THREE.Mesh;
@@ -81,7 +82,8 @@ export class Train {
         } else this.mesh.material = Train.standardMaterial;
     }
 
-    setPos(v:THREE.Vector3) {
+    setPos(v : THREE.Vector3 | THREE.Vector2) {
+
         if (!this.mesh) {
             console.warn("Attempted to set position but there's no mesh")
             return;
@@ -91,12 +93,10 @@ export class Train {
             console.warn("Attempted to setPos to a null vector");
             return;
         }
-        //let rand = new THREE.Vector3().randomDirection()
+
+        if (v instanceof THREE.Vector2) v = new THREE.Vector3(v.x,v.y,0);
         let vec = v.clone()
-        //vec.z = 2;
-        //let vec = v;
         this.mesh.position.set(...vec.toArray());
-        //this.mesh.lookAt(new THREE.Vector3(0,100,0))
     }
 
     setHeading(deg : number) {
@@ -158,9 +158,11 @@ export class Train {
             return
         };
 
+        let v = new THREE.Vector3(nextCoords.x, nextCoords.y, 0);
+
         let arrivalTime = +(this.nextStop.stopTime) * 1000;
 
-        let difference = new THREE.Vector3().subVectors(nextCoords, this.mesh.position)
+        let difference = new THREE.Vector3().subVectors(v, this.mesh.position)
         let dt = arrivalTime - time;
         dt = dt < 0 ? 2000 : dt;
 
@@ -171,8 +173,7 @@ export class Train {
         //this.setPos(this.mesh.position.addScaledVector(difference, ms/dt*100))
         this.mesh.position.addScaledVector(difference, ms/dt*1);
 
-        //this.setHeadingFromVector(difference);
-        this.mesh.lookAt(nextCoords);
+        this.mesh.lookAt(v);
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
         //console.log("updating")
         //this.mesh.rotateZ(Math.sin(ms/4000)*10);
