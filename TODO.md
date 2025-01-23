@@ -4,7 +4,7 @@
 - [x] View schedules on interaction
 - [x] Improve shadow resolution
 - [ ] Add click inspection + follow
-- [ ] Fix bad nextStops
+- [x] Fix bad nextStops
 - [ ] Load data async to remove that weird hitch in rendering
 `
 - [x] Draw parallel tracks

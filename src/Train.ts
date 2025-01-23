@@ -154,6 +154,11 @@ export class Train {
         //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
         let nextCoords = stopCoords[this.nextStop.stopID]
         if (!nextCoords) {
+            let i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
+            this.nextStop = this.data.stopTimes[0][i+1];
+            nextCoords = stopCoords[this.nextStop.stopID]
+        }
+        if (!nextCoords) {
             console.warn(`Stop ${this.nextStop.stopID} has no coords`);
             return
         };

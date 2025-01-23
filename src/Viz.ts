@@ -349,7 +349,7 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
             //bisector.multiplyScalar(1);
             linePoints.push(b.addScaledVector(bisector, offset));
             
-            const lineG = new LineGeometry().setFromPoints(linePoints.filter(n => n));
+            const lineG = new LineGeometry().setFromPoints(linePoints.filter(n => n).map(v => new THREE.Vector3(v.x, v.y, -1)));
             const line = new Line2(lineG, lineM);
             scene.add(line);
         } catch (e) {
