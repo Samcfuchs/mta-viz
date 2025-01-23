@@ -208,15 +208,11 @@ export function initScene() {
             }
         })
 
-        
-
         controls.update(.01);
         //target.position.set(...controls.target.toArray())
 
         renderer.render(scene, camera);
         labelRenderer.render(scene, camera);
-
-        //this.mesh.position.addScaledVector(difference, ms/dt*1);
 
         prev = timestamp;
     }
@@ -260,6 +256,20 @@ function addStop(row: any) {
     return stop;
 }
 
+let lineOffsets : Record<string, number> = {
+    'L':.25,
+    '4':.25, '5':.50, '6':.75,
+    '1':.25, '2':.50, '3':.75,
+    'N':.25, 'Q':.50, 'R':.75, 'W':1.0,
+    '7':.5,
+    'A':.25, 'B':.50, 'C':.75, 'D':1.0,
+    'E': 1.25,
+    'F':1.50,
+    'G':.5,
+    'J':.5,
+    'Z':.75,
+}
+
 /**
  * Draw 3D subway lines in scene
  * @param json Routes from static data
@@ -273,7 +283,9 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
     Object.entries(json).forEach(([id, ll]) => {
         let waypoints : THREE.Vector2[] = ll.map(xy => coordinateLL(...xy));
         let route: string = id.split('..')[0];
-        let track: string = id.split('..')[1];
+        let track: string = id.split('..')[1] ?? id.split('.')[1];
+        console.info(id, track);
+        offset = lineOffsets[route] ?? .5;
         const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .15, worldUnits: true });
 
         try {
