@@ -7,6 +7,7 @@ import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train } from './Train.ts';
 import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
+import { rendererReference, string } from 'three/tsl';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -65,13 +66,15 @@ export let staticStopTimes : any;
 export const createShadows = true;
 export const dataPanel = document.getElementById('dataView');
 export const dataHover = document.getElementById('hover');
+let renderer : THREE.WebGLRenderer;
+let camera : THREE.PerspectiveCamera;
 
 export function initScene() {
     const mount = document.getElementById('renderWindow') as HTMLDivElement;
 
     scene = new THREE.Scene();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = createShadows;
@@ -85,7 +88,7 @@ export function initScene() {
     labelRenderer.domElement.style.pointerEvents = 'none';
     mount.appendChild(labelRenderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.001, 1000);
+    camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.001, 1000);
 
     camera.up.set(0,0,1);
     camera.position.set(0,-10,10);
@@ -130,12 +133,6 @@ export function initScene() {
     groundMesh.castShadow = false;
     groundMesh.receiveShadow = createShadows;
     scene.add(groundMesh)
-
-    let target = putCube(controls.target)
-    //scene.add(target);
-
-    let start : number;
-    let prev : number;
 
     window.addEventListener('resize', onWindowResize, false);
     function onWindowResize() {
@@ -187,7 +184,11 @@ export function initScene() {
             
     }
 
-    function animate(timestamp:number) {
+    let start : number;
+    let prev : number;
+
+    function animate(timestamp?:number) {
+        timestamp = timestamp ?? new Date().getTime();
         requestAnimationFrame(animate);
 
         if (start === undefined) { start = timestamp }
@@ -196,16 +197,8 @@ export function initScene() {
 
         let d = new Date();
         let t = d.getTime();
-        //console.info(dt);
-        let destination = stopCoords['L02']
 
-        Object.entries(trains).map((kv,_) => {
-            kv[1].update(dt, t); // All the trains get an animation update
-
-            // Temporary debug behavior
-            if (kv[1].mesh) {
-                //kv[1].mesh.position.addScaledVector(new THREE.Vector3(0,0,1), .00001);
-            }
+        Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); // All the trains get an animation update
         })
 
         controls.update(.01);
@@ -269,6 +262,7 @@ let lineOffsets : Record<string, number> = {
     'J':.5,
     'Z':.75,
 }
+let routeMap : Record<string, THREE.Vector2[]> = {}
 
 /**
  * Draw 3D subway lines in scene
@@ -284,20 +278,21 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
         let waypoints : THREE.Vector2[] = ll.map(xy => coordinateLL(...xy));
         let route: string = id.split('..')[0];
         let track: string = id.split('..')[1] ?? id.split('.')[1];
-        console.info(id, track);
+        console.debug(id, track);
         offset = lineOffsets[route] ?? .5;
         const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .15, worldUnits: true });
 
         try {
             let linePoints : THREE.Vector2[] = []
+
             let a, b, c, bisector, v1, v2;
 
+            // Add the origin
             b = waypoints[0].clone();
             c = waypoints[1].clone();
 
             v2 = c.clone().sub(b).normalize();
             bisector = new THREE.Vector2(v2.y, -v2.x);
-            //bisector.multiplyScalar(1);
             linePoints.push(b.addScaledVector(bisector, offset));
 
             for (let i=1; i<waypoints.length-1; i++) {
@@ -342,14 +337,17 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
                 linePoints.push(b.addScaledVector(bisector, offset));
             }
 
+            // Add terminal
             a  = waypoints[waypoints.length-2].clone();
             b = waypoints[waypoints.length-1].clone();
             v1 = a.clone().sub(b).normalize();
             bisector = new THREE.Vector2(-v1.y, v1.x);
-            //bisector.multiplyScalar(1);
             linePoints.push(b.addScaledVector(bisector, offset));
+            linePoints = linePoints.filter(n => n); // Remove null points
+
+            routeMap[id] = linePoints;
             
-            const lineG = new LineGeometry().setFromPoints(linePoints.filter(n => n).map(v => new THREE.Vector3(v.x, v.y, -1)));
+            const lineG = new LineGeometry().setFromPoints(linePoints.map(v => new THREE.Vector3(v.x, v.y, -1)));
             const line = new Line2(lineG, lineM);
             scene.add(line);
         } catch (e) {
@@ -381,11 +379,13 @@ export async function initData() {
     console.info("Static stop times: ");
     console.info(staticStopTimes);
 
+    console.debug("Processed routes: ", routeMap);
+
     //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
 }
 
-export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : Record<string,StaticRoute>) {
-    stopTimes = stopTimes ? stopTimes : staticStopTimes;
+export async function setData(realTimeData : Record<string, DataChunk>, stopTimes? : Record<string,StaticRoute>) {
+    stopTimes = stopTimes ?? staticStopTimes;
     if (!stopTimes) { console.error("Static stops not loaded"); return };
 
     console.info(`Initializing ${Object.keys(stopTimes).length} static routes 
@@ -432,6 +432,15 @@ export function setData(realTimeData : Record<string, DataChunk>, stopTimes? : R
 
         nLive++;
     })
-    console.log(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
+
+    Object.keys(trains).forEach(key => {
+        let t : Train = trains[key];
+
+        if (!t.nextStop) {
+           t.deleteFromScene(scene); 
+           delete trains[key]
+        } 
+    })
+    console.info(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
 
 }

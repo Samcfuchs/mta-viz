@@ -6,7 +6,8 @@
 - [ ] Add click inspection + follow
 - [x] Fix bad nextStops
 - [ ] Load data async to remove that weird hitch in rendering
-`
+- [ ] Prune old trains
+
 - [x] Draw parallel tracks
 - [x] Connect lines to terminals again
 - [ ] Systematize track parallels
