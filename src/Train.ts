@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { DataChunk } from './RealTime';
 import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover } from './Viz';
 import { StaticRoute } from './Static';
-import { ThreeMFLoader } from 'three/examples/jsm/Addons.js';
 
 export class Train {
     mesh : THREE.Mesh;
@@ -14,6 +13,7 @@ export class Train {
     staticData : StaticRoute;
     nextStop : { stopTime: number; stopID: string; } | undefined;
     prevStop : { stopTime: number; stopID: string; } | undefined;
+    isActive : boolean;
 
     static standardMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 });
     static highlightMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness:1 });
@@ -46,7 +46,9 @@ export class Train {
         this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
         if (this.staticData && this.nextStop) {
             try {
-                let pStopNumber = this.staticData.stops.findIndex(stop => stop.stopID == this.nextStop?.stopID, this);
+                let staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
+                if (staticStopSeq < 1) this.isActive = false;
+                //let pStopNumber = this.staticData.stops.findIndex(stop => stop.stopID == this.nextStop?.stopID, this);
             } catch {
                 console.debug(this.nextStop)
                 console.debug(this.staticData.stops)
@@ -161,17 +163,13 @@ export class Train {
         if (!this.mesh) return;
         time = time ?? new Date().getTime()
 
-        //let nextStop = this.data.stopTimes[0][0]
-        //console.log(time);
         //this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
         this.nextStop = this.data.stopTimes[0][0]
-
-
-        let shortTripID = this.tripID.split('_')[1]
 
         if (!this.nextStop) {
             //console.warn("FUCK")
             this.changeMaterial(Train.errorMaterial);
+            console.error(`Train ${this.tripID} has no nextStop`);
             return
         }
 
@@ -188,8 +186,17 @@ export class Train {
         };
 
         let staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
-        if (staticStopSeq == 0) { return; }
-        if (staticStopSeq == -1) { return; }
+        if (staticStopSeq == 0) {
+            // This train has not left its first station yet
+            this.isActive = false;
+            return;
+
+        }
+        if (staticStopSeq == -1) { 
+            console.error(`Train ${this.tripID} has failed staticStopSeq`);
+            return;
+        }
+        if (staticStopSeq > 0) { this.isActive = true; }
 
         this.prevStop = this.staticData.stops[staticStopSeq - 1] ??
                         this.staticData.stops[staticStopSeq - 2];
@@ -207,6 +214,9 @@ export class Train {
         let difference = new THREE.Vector3().subVectors(v, this.mesh.position)
         let dt = arrivalTime - time;
         dt = dt < 0 ? 2000 : dt;
+        if (dt < 0) {
+            console.error(`Train ${this.tripID} has a nextStop that is in the past.`)
+        }
 
         //if (dt < 0) dt = 0;
         //let targetAngle = difference.clone().normalize()

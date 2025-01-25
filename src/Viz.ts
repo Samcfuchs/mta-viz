@@ -17,7 +17,7 @@ export const COORD_SCALE = 1e3;
 
 let trains : Record<string, Train> = {};
 
-function coordinateLL(lat:number, lon:number) : THREE.Vector2 {
+export function coordinateLL(lat:number, lon:number) : THREE.Vector2 {
     let v = new THREE.Vector2(lon, lat).sub(CENTER);
     v.multiplyScalar(COORD_SCALE);
     //console.log(v.toArray());
@@ -197,6 +197,7 @@ export function initScene() {
 
         let d = new Date();
         let t = d.getTime();
+        //console.log(dt);
 
         Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); // All the trains get an animation update
         })
@@ -268,7 +269,7 @@ let routeMap : Record<string, THREE.Vector2[]> = {}
 
 /**
  * Draw 3D subway lines in scene
- * @param json Routes from static data
+ * @param json Routes from static data shapes.txt
  */
 function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Record<string,string>, offset? : number) {
     offset = offset ?? .5;
@@ -378,8 +379,8 @@ export async function initData() {
     
     staticStopTimes = await getStopTimes();
     
-    console.info("Static stop times: ");
-    console.info(staticStopTimes);
+    console.debug("Static stop times: ");
+    console.debug(staticStopTimes);
 
     console.debug("Processed routes: ", routeMap);
 
@@ -414,24 +415,24 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
             return;
         }
 
-        let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
-                         Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
-                            /*  */.find(route => {
-                                let firstRTstop = rtd.stopTimes[0][0].stopID;
-                                let static_stops = route.stops.map(s => s.stopID);
-                                return static_stops.includes(firstRTstop);
-                            }) 
-                         ?? Object.values(stopTimes).find((v,i,_) => v.stops.map(s=>s).map(s => s.stopID).includes(rtd.parentStopID!))
-                         ?? undefined;
-        
-        if(!staticData) {
-            // No match with static data
-            console.warn(`No static data found for train ${key} w/ ${rtd.shortTripID}`)
-            return;
-        }
 
         let train : Train = trains[rtd.tripID]
         if (!train) {
+            let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
+                            Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
+                                /*  */.find(route => {
+                                    let firstRTstop = rtd.stopTimes[0][0].stopID;
+                                    let static_stops = route.stops.map(s => s.stopID);
+                                    return static_stops.includes(firstRTstop);
+                                }) 
+                            ?? Object.values(stopTimes).find((v,i,_) => v.stops.map(s=>s).map(s => s.stopID).includes(rtd.parentStopID!))
+                            ?? undefined;
+            
+            if(!staticData) {
+                // No match with static data
+                console.warn(`No static data found for train ${key} w/ ${rtd.shortTripID}`)
+                return;
+            }
             // Create one
             train = new Train(rtd.tripID)
             train.setData(rtd, staticData);
@@ -439,6 +440,8 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
             if (rtd.hasVehicle) {
                 train.createMesh();
                 let pos = stopCoords[train.data.parentStopID!]
+                //console.debug(pos)
+                //console.debug(train.data.parentStopID);
                 train.setPos(pos);
                 train.addToScene(scene);
             }
@@ -447,12 +450,13 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
         }
 
         // could also add static data here
-        train.setData(rtd, staticData);
+        train.setData(rtd);
         train.manageDataChange();
 
         nLive++;
     })
 
+    /*
     Object.keys(trains).forEach(key => {
         let t : Train = trains[key];
 
@@ -461,6 +465,7 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
            delete trains[key]
         } 
     })
+    */
     console.info(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
 
 }
