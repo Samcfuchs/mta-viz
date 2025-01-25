@@ -13,9 +13,12 @@ export class Train {
     testArrivalTime: number;
     staticData : StaticRoute;
     nextStop : { stopTime: number; stopID: string; } | undefined;
+    prevStop : { stopTime: number; stopID: string; } | undefined;
 
     static standardMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 });
     static highlightMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness:1 });
+    static warningMaterial = new THREE.MeshStandardMaterial({ color: 0xf5d14e, roughness:1 });
+    static errorMaterial = new THREE.MeshStandardMaterial({ color: 0xf5544e, roughness:1 });
     static SIZE : number = 0.5;
 
     constructor(tripID : string) {
@@ -26,7 +29,9 @@ export class Train {
     setData(realTimeData : DataChunk, staticData? : any) : void {
         this.data = realTimeData;
         this.staticData = staticData ?? this.staticData;
-        //this.manageDataChange();
+
+        // Remove this before using stop sequence values
+        this.staticData.stops = this.staticData.stops.filter(x => x);
     }
 
     /**
@@ -39,6 +44,16 @@ export class Train {
 
         let time = new Date().getTime()
         this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
+        if (this.staticData && this.nextStop) {
+            try {
+                let pStopNumber = this.staticData.stops.findIndex(stop => stop.stopID == this.nextStop?.stopID, this);
+            } catch {
+                console.debug(this.nextStop)
+                console.debug(this.staticData.stops)
+                throw Error();
+            }
+
+        }
     }
 
     createMesh() : THREE.Mesh {
@@ -57,6 +72,11 @@ export class Train {
         return obj;
     }
 
+    changeMaterial(m : THREE.Material) : THREE.Mesh {
+        this.mesh.material = m;
+        return this.mesh;
+    }
+
     static timestampString(t : number | undefined) {
         if (!t) return "none";
         return new Date((t) * 1000).toLocaleTimeString('en-us');
@@ -68,6 +88,7 @@ export class Train {
             `TripID: ${this.tripID}`,
             `Parent stop: ${this.data.parentStopID}`,
             `Next stop: ${this.nextStop?.stopID} @ ${Train.timestampString(this.nextStop?.stopTime)}`,
+            `Previous stop: ${this.prevStop?.stopID}`,
             `Schedule: \n${this.data.stopTimes[0].map(stop => `\t${stop.stopID} @ ${Train.timestampString(stop.stopTime)}`).join('\n')}`,
             //`Static schedule: \n${this.staticData.stops.map(stop => `\t${stop.stopID} @ ${Train.timestampString(stop.stopTime)}`).join('\n')}`
         ].join('\n');
@@ -142,17 +163,20 @@ export class Train {
 
         //let nextStop = this.data.stopTimes[0][0]
         //console.log(time);
-        this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
+        //this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
+        this.nextStop = this.data.stopTimes[0][0]
+
 
         let shortTripID = this.tripID.split('_')[1]
 
         if (!this.nextStop) {
             //console.warn("FUCK")
+            this.changeMaterial(Train.errorMaterial);
             return
         }
 
-        //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
         let nextCoords = stopCoords[this.nextStop.stopID]
+        // If nextCoords aren't available, just skip to the next station
         if (!nextCoords) {
             let i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
             this.nextStop = this.data.stopTimes[0][i+1];
@@ -162,6 +186,19 @@ export class Train {
             console.warn(`Stop ${this.nextStop.stopID} has no coords`);
             return
         };
+
+        let staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
+        if (staticStopSeq == 0) { return; }
+        if (staticStopSeq == -1) { return; }
+
+        this.prevStop = this.staticData.stops[staticStopSeq - 1] ??
+                        this.staticData.stops[staticStopSeq - 2];
+        if (!this.prevStop) {
+            console.warn(`Train ${this.tripID} to ${this.nextStop.stopID} @ ${this.nextStop.stopTime} can't identify its previous stop`);
+        }
+        //this.prevStop = this.staticData.stops[0];
+
+        //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
 
         let v = new THREE.Vector3(nextCoords.x, nextCoords.y, 0);
 

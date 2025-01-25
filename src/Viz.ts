@@ -278,7 +278,7 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
         let waypoints : THREE.Vector2[] = ll.map(xy => coordinateLL(...xy));
         let route: string = id.split('..')[0];
         let track: string = id.split('..')[1] ?? id.split('.')[1];
-        console.debug(id, track);
+        //console.debug(id, track);
         offset = lineOffsets[route] ?? .5;
         const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .15, worldUnits: true });
 
@@ -401,8 +401,26 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
 
         nTotal++;
         let rtd = realTimeData[key];
+
+        // Trains with no stop times are probably at the end of their routes and won't be included
+        // TODO check this against static data?
+        if (!rtd.stopTimes[0][0]) {
+            if (trains[rtd.tripID]) {
+                trains[rtd.tripID]?.deleteFromScene(scene);
+                delete trains[rtd.tripID]
+            }
+            return;
+        }
+
         let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
-                         Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.shortTripID))
+                         Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
+                            /*  */.find(route => {
+                                let firstRTstop = rtd.stopTimes[0][0].stopID;
+                                let static_stops = route.stops.map(s => s.stopID);
+                                return static_stops.includes(firstRTstop);
+                            }) 
+                         ?? Object.values(stopTimes).find((v,i,_) => v.stops.map(s=>s).map(s => s.stopID).includes(rtd.parentStopID!))
+                         ?? undefined;
         
         if(!staticData) {
             // No match with static data
