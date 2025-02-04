@@ -13,6 +13,7 @@ type Station = {
     lon : number,
     x : number,
     y : number,
+    v : THREE.Vector2
 }
 
 type Shape = {
@@ -67,6 +68,7 @@ export class Track {
                 lon: stopInfo.lon,
                 x: xy.x,
                 y: xy.y,
+                v: new THREE.Vector2(...xy),
             }
         })
 
@@ -155,9 +157,19 @@ export class Track {
         return line;
     }
 
-    interp(id1 : string, id2 : string) : THREE.Vector2 {
-
-        return new THREE.Vector2();
+    /**
+     * 
+     * @param id1 Origin station
+     * @param id2 Target station
+     * @param r scalar
+     * @returns XY coordinate between the two points
+     */
+    interp(id1 : string, id2 : string, r : number) : THREE.Vector2 {
+        let v1 = this.stations.find(s => s.id == id1)!.v;
+        let v2 = this.stations.find(s => s.id == id2)!.v;
+        let difference = v2.sub(v1)
+        let lerp = v1.addScaledVector(difference, r);
+        return lerp;
     }
 
     previous(id : string) : Station {
