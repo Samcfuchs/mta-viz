@@ -1,7 +1,10 @@
-const SHAPES_URL = 'http://localhost:3000/shapes.txt';
-const STOPS_URL = 'http://localhost:3000/stops'
-const ROUTES_URL = 'http://localhost:3000/routes.json'
-const STOP_TIMES_URL = 'http://localhost:3000/stop_times.txt'
+import * as d3 from 'd3';
+
+const BASE_URL = 'http://localhost:3000/data/mta';
+const SHAPES_URL = BASE_URL + '/shapes.txt';
+const STOPS_URL = BASE_URL + '/stops.txt';
+const ROUTES_URL = BASE_URL + '/routes.txt'
+const STOP_TIMES_URL = BASE_URL + '/stop_times.txt'
 
 function parseShapesToJSON(text: string) : Record<string, [number,number][]> {
     const data_obj: Record<string, [number,number][]> = {}
@@ -74,20 +77,12 @@ export async function getShapes() : Promise<Record<string,[number,number][]>> {
 
 // Stops are preprocessed
 export async function getStops() : Promise<any> {
-    return fetch(STOPS_URL)
-        .then(response => {
-            if (!response.ok) throw new Error("Failed to fetch shapes");
-            return response.json();
-        });
+    return d3.csv(STOPS_URL)
 }
 
 // Routes are just converted from txt to json
 export async function getRoutes() {
-    return fetch(ROUTES_URL)
-        .then(response => {
-            if (!response.ok) throw new Error("Failed to fetch routes");
-            return response.json();
-        })
+    return d3.csv(ROUTES_URL);
 }
 
 // Just text

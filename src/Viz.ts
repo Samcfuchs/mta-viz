@@ -5,9 +5,9 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train } from './Train.ts';
-import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute } from './Static.ts';
+import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
-import { rendererReference, string } from 'three/tsl';
+import * as d3 from 'd3';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -200,6 +200,8 @@ export function initScene() {
 
         Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); // All the trains get an animation update
         })
+
+        d3.select('#clock').text(d.toLocaleTimeString('en-us'))
 
         controls.update(.01);
         //target.position.set(...controls.target.toArray())

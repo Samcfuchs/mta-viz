@@ -49,6 +49,12 @@ div.renderWindow {
   display:inline-block;
 }
 
+aside#clock {
+  position:fixed;
+  color: white;
+  font-family: sans-serif;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
