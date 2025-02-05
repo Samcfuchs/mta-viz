@@ -410,7 +410,7 @@ export async function initDataTracks() {
             continue
         }
 
-        let t : Track = new Track(shapes[route_id], staticRouteData, stopInfos, .5, `#${lineColors[route]}`);
+        let t : Track = new Track(shapes[route_id], staticRouteData, stopInfos, undefined, `#${lineColors[route]}`);
         t.drawMap(scene);
 
         allTracks[route_id] = t;

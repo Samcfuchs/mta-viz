@@ -6,6 +6,20 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { StaticRoute } from './Static';
 import { CSS2DObject } from 'three/examples/jsm/Addons.js';
 
+let lineOffsets : Record<string, number> = {
+    'L':.25,
+    '4':.25, '5':.50, '6':.75,
+    '1':.25, '2':.50, '3':.75,
+    'N':.25, 'Q':.50, 'R':.75, 'W':1.0,
+    '7':.5,
+    'A':.25, 'B':.50, 'C':.75, 'D':1.0,
+    'E': 1.25,
+    'F':1.50,
+    'G':.5,
+    'J':.5,
+    'Z':.75,
+}
+
 type Station = {
     id : string,
     parent : string
@@ -54,7 +68,9 @@ export class Track {
      * @param route The data from stop_times.txt
      */
     constructor(shape : TrackShape, route : StaticRoute, stops : Record<string, StopInfo>, offset? : number, color? : THREE.ColorRepresentation) {
-        this.offset = offset ?? 0;
+        let trainLine = shape.shape_id.split('..')[0];
+
+        this.offset = offset ?? lineOffsets[trainLine];
         this.color =  color ?? 0x888888
         this.material = new LineMaterial({ color: this.color, linewidth: Track.WIDTH, worldUnits: true})
         this.id = shape.shape_id;
@@ -82,24 +98,29 @@ export class Track {
     }
 
     generateWaypoints(shape : TrackShape) {
-        let waypointsXY = shape.waypoints.map(xy => coordinateLL(xy.lat, xy.lon));
-        let linePoints : THREE.Vector2[] = [];
+        let waypointsXY = shape.waypoints.map(wp => coordinateLL(wp.lat, wp.lon));
 
-        let a,b,c, bisector, v1, v2;
+        let a,b,c, bisector, v1, v2, finalV;
 
         b = waypointsXY[0].clone();
         c = waypointsXY[1].clone();
 
         v2 = c.clone().sub(b).normalize();
         bisector = new THREE.Vector2(v2.y, -v2.x);
-        linePoints.push(b.addScaledVector(bisector, this.offset));
 
         let stationIndex = 0;
         let nextStationIndex = 1;
-        this.waypoints.push({ pos: b.addScaledVector(bisector, this.offset), lastStop: this.stations[stationIndex].id})
+
+        finalV = b.addScaledVector(bisector, this.offset)
+        this.waypoints.push({ pos: finalV, lastStop: this.stations[stationIndex].id})
+
+        // Update station vector position
+        if (shape.waypoints[0].lat == this.stations[0].lat && 
+            shape.waypoints[0].lon == this.stations[0].lon) {
+                this.stations[0].v = finalV;
+        }
 
         for (let i=1; i<waypointsXY.length-1; i++) {
-        //for (let i=1; i<waypointsXY.length-1; i++) {
         
             b = waypointsXY[i].clone();
             a = waypointsXY[i-1].clone();
@@ -134,7 +155,7 @@ export class Track {
                 console.error("Bisector fails", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
             }
 
-            let finalV = b.addScaledVector(bisector, this.offset);
+            finalV = b.addScaledVector(bisector, this.offset);
 
             this.waypoints.push({ pos: finalV, lastStop: this.stations[stationIndex].id})
 
@@ -159,10 +180,16 @@ export class Track {
         //linePoints.push(b.addScaledVector(bisector, this.offset))
         //linePoints = linePoints.filter(n=>n);
 
+        finalV = b.addScaledVector(bisector, this.offset);
         this.waypoints.push({ 
-            pos: b.addScaledVector(bisector, this.offset), 
+            pos: finalV, 
             lastStop: this.stations[this.stations.length-1].id
         })
+
+        if (shape.waypoints[shape.waypoints.length-1].lat == this.stations[this.stations.length-1].lat && 
+            shape.waypoints[shape.waypoints.length-1].lon == this.stations[this.stations.length-1].lon) {
+                this.stations[this.stations.length-1].v = finalV;
+        }
     }
 
     drawMap(scene?:THREE.Scene) : Line2 {
@@ -174,7 +201,7 @@ export class Track {
         //console.debug(this.route_id);
         if (scene) {
             scene.add(line);
-            this.drawStops(scene);
+            //this.drawStops(scene);
         }
         return line;
     }
@@ -220,7 +247,7 @@ export class Track {
 
         //if ((row.id.slice(-1) == 'N') || (row.id.slice(-1) == 'S')) return;
         //let geom = new THREE.CircleGeometry(.0004);
-        let geom = new THREE.SphereGeometry(.5);
+        let geom = new THREE.SphereGeometry(.25);
         //geom.lookAt(new THREE.Vector3(0, 0, 1));
         geom.translate(v.x, v.y, 0);
 
