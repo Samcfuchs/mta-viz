@@ -1,9 +1,10 @@
 import './App.css'
-import {initScene, initData, setData} from './Viz.ts'
+import {initScene, initData, setData, initDataTracks} from './Viz.ts'
 import {pull, init} from './RealTime.ts';
 
 initScene();
-await initData()
+//await initData()
+await initDataTracks();
 
 
 init().then(() => {

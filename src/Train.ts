@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { DataChunk } from './RealTime';
-import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover } from './Viz';
+import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover, stopInfos } from './Viz';
 import { StaticRoute } from './Static';
+import { Track } from './Track';
 
 export class Train {
     mesh : THREE.Mesh;
@@ -14,6 +15,7 @@ export class Train {
     nextStop : { stopTime: number; stopID: string; } | undefined;
     prevStop : { stopTime: number; stopID: string; } | undefined;
     isActive : boolean;
+    track : Track;
 
     static standardMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f0da, roughness:1 });
     static highlightMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness:1 });
@@ -174,6 +176,8 @@ export class Train {
         }
 
         let nextCoords = stopCoords[this.nextStop.stopID]
+        nextCoords = this.track.stn(this.nextStop.stopID)!.v;
+        //nextCoords = stopInfos[this.nextStop.stopID].
         // If nextCoords aren't available, just skip to the next station
         if (!nextCoords) {
             let i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
@@ -198,8 +202,10 @@ export class Train {
         }
         if (staticStopSeq > 0) { this.isActive = true; }
 
+        /*
         this.prevStop = this.staticData.stops[staticStopSeq - 1] ??
                         this.staticData.stops[staticStopSeq - 2];
+        */
         if (!this.prevStop) {
             console.warn(`Train ${this.tripID} to ${this.nextStop.stopID} @ ${this.nextStop.stopTime} can't identify its previous stop`);
         }

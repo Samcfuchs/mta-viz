@@ -5,9 +5,10 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train } from './Train.ts';
-import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, } from './Static.ts';
+import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, getShapesAsShapes, } from './Static.ts';
 import { DataChunk, pull } from './RealTime.ts';
 import * as d3 from 'd3';
+import { StopInfo, Track } from './Track.ts';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -61,8 +62,9 @@ function putSurface(normal:THREE.Vector3) : THREE.Mesh {
 }
 
 export let stopCoords : Record<string, THREE.Vector2> = {};
+export let stopInfos : Record<string, StopInfo> = {};
 let scene : THREE.Scene;
-export let staticStopTimes : any;
+export let staticStopTimes : Record<string, StaticRoute>;
 export const createShadows = true;
 export const dataPanel = document.getElementById('dataView');
 export const dataHover = document.getElementById('hover');
@@ -199,8 +201,7 @@ export function initScene() {
         let t = d.getTime();
         //console.log(dt);
 
-        Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); // All the trains get an animation update
-        })
+        //Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); })
 
         d3.select('#clock').text(d.toLocaleTimeString('en-us'))
 
@@ -222,12 +223,12 @@ export function initScene() {
  * @param row A row of data from stops.txt to generate a stop from
  * @returns void
  */
-function addStop(row: any) {
+function addStop(row: StopInfo) {
 
-    let v = coordinateLL(row['stop_lat'], row['stop_lon']);
-    stopCoords[row['stop_id']] = v;
+    let v = coordinateLL(row.lat, row.lon);
+    stopCoords[row.id] = v;
 
-    if ((row['stop_id'].slice(-1) == 'N') || (row['stop_id'].slice(-1) == 'S')) return;
+    if ((row.id.slice(-1) == 'N') || (row.id.slice(-1) == 'S')) return;
     //let geom = new THREE.CircleGeometry(.0004);
     let geom = new THREE.SphereGeometry(.5);
     //geom.lookAt(new THREE.Vector3(0, 0, 1));
@@ -241,7 +242,7 @@ function addStop(row: any) {
 
     const stopDiv = document.createElement('div');
     stopDiv.className = 'stopLabel';
-    stopDiv.textContent = row.stop_id;
+    stopDiv.textContent = row.id;
     stopDiv.style.backgroundColor = 'transparent';
 
     const stopLabel = new CSS2DObject(stopDiv);
@@ -364,7 +365,7 @@ function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Recor
 export async function initData() {
 
     getStops()
-        .then(json => json.forEach(addStop))
+        .then(json => Object.values(json).forEach(addStop))
         //.then(_ => renderer.render(scene,camera));
 
     let lineColors: Record<string, string> = {};
@@ -385,6 +386,40 @@ export async function initData() {
     console.debug("Processed routes: ", routeMap);
 
     //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
+}
+
+let allTracks : Record<string, Track> = {}
+export async function initDataTracks() {
+    let shapes = await getShapesAsShapes();
+    staticStopTimes = await getStopTimes();
+    //let stops = await getStops();
+    stopInfos = await getStops();
+
+    let lineColors: Record<string, string> = {};
+    let routes = await getRoutes();
+
+    routes.forEach(route => lineColors[route['route_id']] = route['route_color'])
+    console.info("LC:", lineColors)
+
+    for (let route_id in shapes) {
+        let staticRouteData = Object.values(staticStopTimes).find(r => r.routeID == route_id)
+        let route: string = route_id.split('..')[0];
+
+        if (!staticRouteData) {
+            console.error("Couldn't find a static route for routeID: ", route_id);
+            continue
+        }
+
+        let t : Track = new Track(shapes[route_id], staticRouteData, stopInfos, .5, `#${lineColors[route]}`);
+        t.drawMap(scene);
+
+        allTracks[route_id] = t;
+    }
+
+
+    console.info("Loaded tracks")
+
+
 }
 
 export async function setData(realTimeData : Record<string, DataChunk>, stopTimes? : Record<string,StaticRoute>) {
@@ -436,6 +471,7 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
             // Create one
             train = new Train(rtd.tripID)
             train.setData(rtd, staticData);
+            train.track = allTracks[rtd.tripID.split('_')[1]];
 
             if (rtd.hasVehicle) {
                 train.createMesh();

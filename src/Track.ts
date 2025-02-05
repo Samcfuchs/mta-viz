@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { coordinateLL } from './Viz.ts';
+import { coordinateLL, stopCoords } from './Viz.ts';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { StaticRoute } from './Static';
+import { CSS2DObject } from 'three/examples/jsm/Addons.js';
 
 type Station = {
     id : string,
@@ -16,12 +17,12 @@ type Station = {
     v : THREE.Vector2
 }
 
-type Shape = {
+export type TrackShape = {
     shape_id : string,
     waypoints : {lat:number, lon:number}[]
 }
 
-type StopInfo = {
+export type StopInfo = {
     id : string,
     name : string,
     lat : number,
@@ -43,6 +44,7 @@ export class Track {
 
     static VERTICAL_OFFSET = -1;
     static WIDTH = .15;
+    static DRAWN_STOPS : string[] = []
 
 
     /**
@@ -51,11 +53,12 @@ export class Track {
      * @param shape The data from shapes.txt
      * @param route The data from stop_times.txt
      */
-    Track(shape : Shape, route : StaticRoute, stops : Record<string, StopInfo>, offset? : number, color? : THREE.ColorRepresentation) {
+    constructor(shape : TrackShape, route : StaticRoute, stops : Record<string, StopInfo>, offset? : number, color? : THREE.ColorRepresentation) {
         this.offset = offset ?? 0;
-        this.color = color ?? 0xEEEEEE
-        this.material = new LineMaterial({ color: color, linewidth: Track.WIDTH, worldUnits: true})
+        this.color =  color ?? 0x888888
+        this.material = new LineMaterial({ color: this.color, linewidth: Track.WIDTH, worldUnits: true})
         this.id = shape.shape_id;
+        this.route_id = shape.shape_id;
 
         this.stations = route.stops.map(stop => { 
             let stopInfo = stops[stop.stopID];
@@ -68,15 +71,17 @@ export class Track {
                 lon: stopInfo.lon,
                 x: xy.x,
                 y: xy.y,
-                v: new THREE.Vector2(...xy),
+                v: new THREE.Vector2(...xy), // Offset here if desired
             }
-        })
+        }).filter(x => x);
 
+        this.waypoints = [];
         this.generateWaypoints(shape);
+
 
     }
 
-    generateWaypoints(shape : Shape) {
+    generateWaypoints(shape : TrackShape) {
         let waypointsXY = shape.waypoints.map(xy => coordinateLL(xy.lat, xy.lon));
         let linePoints : THREE.Vector2[] = [];
 
@@ -90,13 +95,11 @@ export class Track {
         linePoints.push(b.addScaledVector(bisector, this.offset));
 
         let stationIndex = 0;
+        let nextStationIndex = 1;
         this.waypoints.push({ pos: b.addScaledVector(bisector, this.offset), lastStop: this.stations[stationIndex].id})
 
         for (let i=1; i<waypointsXY.length-1; i++) {
         //for (let i=1; i<waypointsXY.length-1; i++) {
-            if (shape.waypoints[i].lat == this.stations[stationIndex+1].lat &&
-                shape.waypoints[i].lon == this.stations[stationIndex+1].lon
-            ) { stationIndex++; }
         
             b = waypointsXY[i].clone();
             a = waypointsXY[i-1].clone();
@@ -131,8 +134,21 @@ export class Track {
                 console.error("Bisector fails", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
             }
 
-            linePoints.push(b.addScaledVector(bisector, this.offset));
-            this.waypoints.push({ pos: b.addScaledVector(bisector, this.offset), lastStop: this.stations[stationIndex].id})
+            let finalV = b.addScaledVector(bisector, this.offset);
+
+            this.waypoints.push({ pos: finalV, lastStop: this.stations[stationIndex].id})
+
+            // Update station vector position
+
+            if (stationIndex == this.stations.length - 1) continue;
+
+            if (shape.waypoints[i].lat == this.stations[nextStationIndex].lat && 
+                shape.waypoints[i].lon == this.stations[nextStationIndex].lon) {
+                    this.stations[nextStationIndex].v = finalV;
+                    stationIndex++;
+                }
+
+            nextStationIndex = stationIndex + 1;
         }
 
         a = waypointsXY[waypointsXY.length-2].clone();
@@ -140,20 +156,26 @@ export class Track {
 
         v1 = a.clone().sub(b).normalize();
         bisector = new THREE.Vector2(-v1.y, v1.x);
-        linePoints.push(b.addScaledVector(bisector, this.offset))
-        linePoints = linePoints.filter(n=>n);
+        //linePoints.push(b.addScaledVector(bisector, this.offset))
+        //linePoints = linePoints.filter(n=>n);
 
         this.waypoints.push({ 
             pos: b.addScaledVector(bisector, this.offset), 
-            lastStop: this.stations[waypointsXY.length-1].id
+            lastStop: this.stations[this.stations.length-1].id
         })
     }
 
     drawMap(scene?:THREE.Scene) : Line2 {
-        const lineG = new LineGeometry().setFromPoints(this.stations.map(s => new THREE.Vector3(s.x, s.y, -1)))
+        //const lineG = new LineGeometry().setFromPoints(this.stations.map(s => new THREE.Vector3(s.x, s.y, -1)))
+        const lineG = new LineGeometry().setFromPoints(this.waypoints.map(wp => wp.pos))
         const line = new Line2(lineG, this.material);
 
-        if (scene) scene.add(line);
+
+        //console.debug(this.route_id);
+        if (scene) {
+            scene.add(line);
+            this.drawStops(scene);
+        }
         return line;
     }
 
@@ -176,8 +198,53 @@ export class Track {
         return this.stations[this.stations.findIndex(s => s.id == id) - 1]
     }
 
+    stn(id : string) : Station | undefined {
+        let station = this.stations.find(s => s.id == id);
+        if (!station) console.warn(`Station ${id} not found on line ${this.route_id}`)
+        return station
+    }
+
     next(id : string) : Station {
         return this.stations[this.stations.findIndex(s => s.id == id) + 1]
+    }
+
+    drawStops(scene : THREE.Scene) {
+        this.stations.forEach(s => Track.drawStop(s, scene))
+    }
+
+
+    static drawStop(row: Station, scene : THREE.Scene) {
+        if (this.DRAWN_STOPS.includes(row.id)) return;
+        let v = row.v
+        stopCoords[row.id] = v;
+
+        //if ((row.id.slice(-1) == 'N') || (row.id.slice(-1) == 'S')) return;
+        //let geom = new THREE.CircleGeometry(.0004);
+        let geom = new THREE.SphereGeometry(.5);
+        //geom.lookAt(new THREE.Vector3(0, 0, 1));
+        geom.translate(v.x, v.y, 0);
+
+        //console.debug(row.name);
+
+
+        let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
+        const stop = new THREE.Mesh(geom, material)
+
+        scene.add(stop);
+
+        const stopDiv = document.createElement('div');
+        stopDiv.className = 'stopLabel';
+        stopDiv.textContent = row.id;
+        stopDiv.style.backgroundColor = 'transparent';
+
+        const stopLabel = new CSS2DObject(stopDiv);
+        stopLabel.position.set(v.x, v.y, 0);
+        stopLabel.center.set(0,4);
+        stop.add(stopLabel);
+
+        this.DRAWN_STOPS.push(row.id)
+
+        return stop;
     }
 
 
