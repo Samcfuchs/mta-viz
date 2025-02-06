@@ -55,6 +55,7 @@ export class Track {
     waypoints : { pos:THREE.Vector2, lastStop:string }[];
     color : THREE.ColorRepresentation;
     material : LineMaterial;
+    shape : TrackShape;
 
     static VERTICAL_OFFSET = -1;
     static WIDTH = .15;
@@ -70,11 +71,12 @@ export class Track {
     constructor(shape : TrackShape, route : StaticRoute, stops : Record<string, StopInfo>, offset? : number, color? : THREE.ColorRepresentation) {
         let trainLine = shape.shape_id.split('..')[0];
 
-        this.offset = offset ?? lineOffsets[trainLine];
+        this.offset = offset ?? lineOffsets[trainLine] ?? 0;
         this.color =  color ?? 0x888888
         this.material = new LineMaterial({ color: this.color, linewidth: Track.WIDTH, worldUnits: true})
         this.id = shape.shape_id;
         this.route_id = shape.shape_id;
+        this.shape = shape;
 
         this.stations = route.stops.map(stop => { 
             let stopInfo = stops[stop.stopID];
@@ -170,6 +172,7 @@ export class Track {
                 }
 
             nextStationIndex = stationIndex + 1;
+
         }
 
         a = waypointsXY[waypointsXY.length-2].clone();
@@ -181,15 +184,21 @@ export class Track {
         //linePoints = linePoints.filter(n=>n);
 
         finalV = b.addScaledVector(bisector, this.offset);
+        if (!finalV) {
+            throw Error;
+        }
         this.waypoints.push({ 
             pos: finalV, 
             lastStop: this.stations[this.stations.length-1].id
         })
 
+        this.waypoints.filter(x => x);
+
         if (shape.waypoints[shape.waypoints.length-1].lat == this.stations[this.stations.length-1].lat && 
             shape.waypoints[shape.waypoints.length-1].lon == this.stations[this.stations.length-1].lon) {
                 this.stations[this.stations.length-1].v = finalV;
         }
+        return this.waypoints;
     }
 
     drawMap(scene?:THREE.Scene) : Line2 {
@@ -201,7 +210,7 @@ export class Track {
         //console.debug(this.route_id);
         if (scene) {
             scene.add(line);
-            //this.drawStops(scene);
+            this.drawStops(scene);
         }
         return line;
     }

@@ -399,7 +399,7 @@ export async function initDataTracks() {
     let routes = await getRoutes();
 
     routes.forEach(route => lineColors[route['route_id']] = route['route_color'])
-    console.info("LC:", lineColors)
+    //console.info("LC:", lineColors)
 
     for (let route_id in shapes) {
         let staticRouteData = Object.values(staticStopTimes).find(r => r.routeID == route_id)
@@ -415,11 +415,7 @@ export async function initDataTracks() {
 
         allTracks[route_id] = t;
     }
-
-
     console.info("Loaded tracks")
-
-
 }
 
 export async function setData(realTimeData : Record<string, DataChunk>, stopTimes? : Record<string,StaticRoute>) {
