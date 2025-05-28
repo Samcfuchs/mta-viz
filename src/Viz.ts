@@ -16,10 +16,10 @@ const CENTER_LON = -73.990568;
 const CENTER = new THREE.Vector2(CENTER_LON, CENTER_LAT)
 export const COORD_SCALE = 1e3;
 
-let trains : Record<string, Train> = {};
+const trains : Record<string, Train> = {};
 
 export function coordinateLL(lat:number, lon:number) : THREE.Vector2 {
-    let v = new THREE.Vector2(lon, lat).sub(CENTER);
+    const v = new THREE.Vector2(lon, lat).sub(CENTER);
     v.multiplyScalar(COORD_SCALE);
     //console.log(v.toArray());
     return v
@@ -253,7 +253,7 @@ function addStop(row: StopInfo) {
     return stop;
 }
 
-let lineOffsets : Record<string, number> = {
+const lineOffsets : Record<string, number> = {
     'L':.25,
     '4':.25, '5':.50, '6':.75,
     '1':.25, '2':.50, '3':.75,
@@ -266,7 +266,7 @@ let lineOffsets : Record<string, number> = {
     'J':.5,
     'Z':.75,
 }
-let routeMap : Record<string, THREE.Vector2[]> = {}
+const routeMap : Record<string, THREE.Vector2[]> = {}
 
 /**
  * Draw 3D subway lines in scene
@@ -368,7 +368,7 @@ export async function initData() {
         .then(json => Object.values(json).forEach(addStop))
         //.then(_ => renderer.render(scene,camera));
 
-    let lineColors: Record<string, string> = {};
+    const lineColors: Record<string, string> = {};
 
     getRoutes()
         .then(json => {
@@ -388,15 +388,15 @@ export async function initData() {
     //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
 }
 
-let allTracks : Record<string, Track> = {}
+const allTracks : Record<string, Track> = {}
 export async function initDataTracks() {
-    let shapes = await getShapesAsShapes();
+    const shapes = await getShapesAsShapes();
     staticStopTimes = await getStopTimes();
     //let stops = await getStops();
     stopInfos = await getStops();
 
-    let lineColors: Record<string, string> = {};
-    let routes = await getRoutes();
+    const lineColors: Record<string, string> = {};
+    const routes = await getRoutes();
 
     routes.forEach(route => lineColors[route['route_id']] = route['route_color'])
     //console.info("LC:", lineColors)
@@ -410,7 +410,7 @@ export async function initDataTracks() {
             continue
         }
 
-        let t : Track = new Track(shapes[route_id], staticRouteData, stopInfos, undefined, `#${lineColors[route]}`);
+        const t : Track = new Track(shapes[route_id], staticRouteData, stopInfos, undefined, `#${lineColors[route]}`);
         t.drawMap(scene);
 
         allTracks[route_id] = t;
