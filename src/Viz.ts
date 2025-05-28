@@ -201,7 +201,7 @@ export function initScene() {
         const t = d.getTime();
         //console.log(dt);
 
-        //Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); })
+        Object.entries(trains).map((kv) => { kv[1].update(dt, t); })
 
         d3.select('#clock').text(d.toLocaleTimeString('en-us'))
 
@@ -282,8 +282,8 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
 
         let train : Train = trains[rtd.tripID]
         if (!train) {
-            const staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
-                            Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
+            const staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) 
+                            ??  Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
                                 /*  */.find(route => {
                                     const firstRTstop = rtd.stopTimes[0][0].stopID;
                                     const static_stops = route.stops.map(s => s.stopID);

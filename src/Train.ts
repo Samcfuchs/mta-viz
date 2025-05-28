@@ -1,8 +1,11 @@
 import * as THREE from 'three';
+//import { DataChunk } from './RealTime';
 import { DataChunk } from './RealTime';
 import {stopCoords, staticStopTimes, createShadows, COORD_SCALE, dataPanel, dataHover, stopInfos } from './Viz';
 import { StaticRoute } from './Static';
 import { Track } from './Track';
+import { transit_realtime } from 'gtfs-realtime-bindings';
+import { sort } from 'd3';
 
 export class Train {
     mesh : THREE.Mesh;
@@ -44,20 +47,45 @@ export class Train {
     manageDataChange() {
         if (this.data.hasVehicle && !this.mesh) this.createMesh();
         if (!this.data.hasVehicle && this.mesh && this.scene) this.deleteFromScene(this.scene!);
+        if (!this.data.hasVehicle) return;
 
         const time = new Date().getTime()
-        this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
-        if (this.staticData && this.nextStop) {
-            try {
-                const staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
-                if (staticStopSeq < 1) this.isActive = false;
-                //let pStopNumber = this.staticData.stops.findIndex(stop => stop.stopID == this.nextStop?.stopID, this);
-            } catch {
-                console.debug(this.nextStop)
-                console.debug(this.staticData.stops)
-                throw Error();
+
+        //const seq = this.data.currentStopSequence!;
+
+        //const parentStopStaticTime = this.staticData.stops.find(s => s.stopID == this.data.parentStopID)?.stopTime;
+        const parentStopStaticSeq = this.staticData.stops.findIndex(s => s.stopID == this.data.parentStopID);
+
+        if (parentStopStaticSeq != -1) {
+            this.nextStop = {
+                stopID: this.data.parentStopID!, 
+                stopTime: Train.stringTimestamp(this.staticData.stops[parentStopStaticSeq].stopTime)
             }
 
+            if (parentStopStaticSeq == 0) {
+                // Next stop is first stop. Train's not active yet.
+                this.isActive = false;
+                return;
+            }
+            const pstop = this.staticData.stops[parentStopStaticSeq-1]
+            this.prevStop = {
+                stopID: pstop.stopID,
+                stopTime: Train.stringTimestamp(pstop.stopTime)
+            }
+        } else {
+            const nextStopIndex = this.data.stopTimes[0].findIndex(v => v.stopTime*1000 > time)
+            this.nextStop = this.data.stopTimes[0][nextStopIndex]
+            this.prevStop = this.data.stopTimes[0][nextStopIndex-1]
+            return;
+        }
+
+        if (!this.nextStop) {
+            console.error(`Train ${this.tripID} with parent stop ${this.data.parentStopID} can't identify its next stop.`)
+            return;
+        }
+
+        if (!this.prevStop) {
+            console.warn(`Train ${this.tripID} to ${this.nextStop.stopID} @ ${this.nextStop.stopTime} can't identify its previous stop`);
         }
     }
 
@@ -180,6 +208,11 @@ export class Train {
     update(ms : number, time? : number) {
         if (!this.mesh) return;
         time = time ?? new Date().getTime()
+
+
+
+
+        return;
 
         //this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
         this.nextStop = this.data.stopTimes[0][0]
