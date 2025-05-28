@@ -332,5 +332,6 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
     })
     */
     console.info(`Matched ${nLive} / ${nTotal} real-time trains to static data`);
+    console.info("Trains created:", trains)
 
 }

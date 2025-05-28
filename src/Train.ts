@@ -22,6 +22,7 @@ export class Train {
     static warningMaterial = new THREE.MeshStandardMaterial({ color: 0xf5d14e, roughness:1 });
     static errorMaterial = new THREE.MeshStandardMaterial({ color: 0xf5544e, roughness:1 });
     static SIZE : number = 0.5;
+    static geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
 
     constructor(tripID : string) {
         this.tripID = tripID;
@@ -62,7 +63,7 @@ export class Train {
 
     createMesh() : THREE.Mesh {
         if (this.mesh) return this.mesh;
-        const geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
+        const geometry = Train.geometry;
 
         const material = Train.standardMaterial;
         const obj = new THREE.Mesh(geometry, material);
@@ -86,6 +87,20 @@ export class Train {
         return new Date((t) * 1000).toLocaleTimeString('en-us');
     }
 
+    static stringTimestamp(s : string) {
+    /**
+    Expects a timestamp in HH:MM:SS format, returns seconds since epoch
+    */
+        const date = new Date();
+        const timeParts = s.split(':');
+
+        date.setHours(+timeParts[0])
+        date.setMinutes(+timeParts[1])
+        date.setSeconds(+timeParts[2])
+
+        return Math.floor(date.getTime() / 1000);
+    }
+
     toString() : string {
         return [
             `Line: ${this.staticData.routeID}`,
@@ -101,7 +116,8 @@ export class Train {
     highlight(state : boolean) {
         if (!this.mesh) return;
         if (state) {
-            this.mesh.material = Train.highlightMaterial;
+            this.changeMaterial(Train.highlightMaterial);
+            //this.mesh.material = Train.highlightMaterial;
             dataPanel!.innerHTML = '<pre>' + this.toString() + '</pre>';
             dataHover!.innerHTML = '<pre>' + this.toString() + '</pre>';
         } else this.mesh.material = Train.standardMaterial;
