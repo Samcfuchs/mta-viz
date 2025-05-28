@@ -44,11 +44,11 @@ export class Train {
         if (this.data.hasVehicle && !this.mesh) this.createMesh();
         if (!this.data.hasVehicle && this.mesh && this.scene) this.deleteFromScene(this.scene!);
 
-        let time = new Date().getTime()
+        const time = new Date().getTime()
         this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
         if (this.staticData && this.nextStop) {
             try {
-                let staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
+                const staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
                 if (staticStopSeq < 1) this.isActive = false;
                 //let pStopNumber = this.staticData.stops.findIndex(stop => stop.stopID == this.nextStop?.stopID, this);
             } catch {
@@ -62,10 +62,10 @@ export class Train {
 
     createMesh() : THREE.Mesh {
         if (this.mesh) return this.mesh;
-        let geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
+        const geometry = new THREE.BoxGeometry(Train.SIZE, Train.SIZE, Train.SIZE*6)
 
-        let material = Train.standardMaterial;
-        let obj = new THREE.Mesh(geometry, material);
+        const material = Train.standardMaterial;
+        const obj = new THREE.Mesh(geometry, material);
         this.mesh = obj;
 
         obj.castShadow = createShadows;
@@ -120,20 +120,20 @@ export class Train {
         }
 
         if (v instanceof THREE.Vector2) v = new THREE.Vector3(v.x,v.y,0);
-        let vec = v.clone()
+        const vec = v.clone()
         this.mesh.position.set(...vec.toArray());
     }
 
     setHeading(deg : number) {
-        let rads = -(deg % 360) * (Math.PI * 2 / 360) ;
-        let y = Math.sin(rads);
-        let x = Math.cos(rads);
+        const rads = -(deg % 360) * (Math.PI * 2 / 360) ;
+        const y = Math.sin(rads);
+        const x = Math.cos(rads);
 
         this.mesh.setRotationFromAxisAngle(new THREE.Vector3(0,0,1), rads)
     }
 
     setHeadingFromVector(v:THREE.Vector3) {
-        let ang = Math.atan2(v.y, v.x);
+        const ang = Math.atan2(v.y, v.x);
         //ang = (Math.PI / 2) - ang;
         this.mesh.setRotationFromAxisAngle(new THREE.Vector3(0,0,1), ang)
     }
@@ -180,7 +180,7 @@ export class Train {
         //nextCoords = stopInfos[this.nextStop.stopID].
         // If nextCoords aren't available, just skip to the next station
         if (!nextCoords) {
-            let i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
+            const i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
             this.nextStop = this.data.stopTimes[0][i+1];
             nextCoords = stopCoords[this.nextStop.stopID]
         }
@@ -189,7 +189,7 @@ export class Train {
             return
         };
 
-        let staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
+        const staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
         if (staticStopSeq == 0) {
             // This train has not left its first station yet
             this.isActive = false;
@@ -213,11 +213,11 @@ export class Train {
 
         //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
 
-        let v = new THREE.Vector3(nextCoords.x, nextCoords.y, 0);
+        const v = new THREE.Vector3(nextCoords.x, nextCoords.y, 0);
 
-        let arrivalTime = +(this.nextStop.stopTime) * 1000;
+        const arrivalTime = +(this.nextStop.stopTime) * 1000;
 
-        let difference = new THREE.Vector3().subVectors(v, this.mesh.position)
+        const difference = new THREE.Vector3().subVectors(v, this.mesh.position)
         let dt = arrivalTime - time;
         dt = dt < 0 ? 2000 : dt;
         if (dt < 0) {

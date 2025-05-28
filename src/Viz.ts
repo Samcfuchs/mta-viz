@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
 import { Train } from './Train.ts';
 import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, getShapesAsShapes, } from './Static.ts';
-import { DataChunk, pull } from './RealTime.ts';
+import { DataChunk } from './RealTime.ts';
 import * as d3 from 'd3';
 import { StopInfo, Track } from './Track.ts';
 
@@ -61,7 +61,7 @@ function putSurface(normal:THREE.Vector3) : THREE.Mesh {
 
 }
 
-export let stopCoords : Record<string, THREE.Vector2> = {};
+export const stopCoords : Record<string, THREE.Vector2> = {};
 export let stopInfos : Record<string, StopInfo> = {};
 let scene : THREE.Scene;
 export let staticStopTimes : Record<string, StaticRoute>;
@@ -197,8 +197,8 @@ export function initScene() {
         const elapsed = timestamp - start;
         const dt = timestamp - prev
 
-        let d = new Date();
-        let t = d.getTime();
+        const d = new Date();
+        const t = d.getTime();
         //console.log(dt);
 
         //Object.entries(trains).map((kv,_) => { kv[1].update(dt, t); })
@@ -218,175 +218,8 @@ export function initScene() {
 
 };
 
-/**
- * Add a 3D modeled stop to the current scene
- * @param row A row of data from stops.txt to generate a stop from
- * @returns void
- */
-function addStop(row: StopInfo) {
-
-    let v = coordinateLL(row.lat, row.lon);
-    stopCoords[row.id] = v;
-
-    if ((row.id.slice(-1) == 'N') || (row.id.slice(-1) == 'S')) return;
-    //let geom = new THREE.CircleGeometry(.0004);
-    let geom = new THREE.SphereGeometry(.5);
-    //geom.lookAt(new THREE.Vector3(0, 0, 1));
-    geom.translate(v.x, v.y, -1);
-
-
-    let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
-    const stop = new THREE.Mesh(geom, material)
-
-    scene.add(stop);
-
-    const stopDiv = document.createElement('div');
-    stopDiv.className = 'stopLabel';
-    stopDiv.textContent = row.id;
-    stopDiv.style.backgroundColor = 'transparent';
-
-    const stopLabel = new CSS2DObject(stopDiv);
-    stopLabel.position.set(v.x, v.y, 0);
-    stopLabel.center.set(0,4);
-    stop.add(stopLabel);
-
-    return stop;
-}
-
-const lineOffsets : Record<string, number> = {
-    'L':.25,
-    '4':.25, '5':.50, '6':.75,
-    '1':.25, '2':.50, '3':.75,
-    'N':.25, 'Q':.50, 'R':.75, 'W':1.0,
-    '7':.5,
-    'A':.25, 'B':.50, 'C':.75, 'D':1.0,
-    'E': 1.25,
-    'F':1.50,
-    'G':.5,
-    'J':.5,
-    'Z':.75,
-}
 const routeMap : Record<string, THREE.Vector2[]> = {}
 
-/**
- * Draw 3D subway lines in scene
- * @param json Routes from static data shapes.txt
- */
-function drawRoutes(json: Record<string, [number,number][]>, lineColors? : Record<string,string>, offset? : number) {
-    offset = offset ?? .5;
-    console.log("Drawing lines");
-
-    let lc = lineColors ? (route:string) => lineColors[route] : (route:string) => 'EEEEEE'
-
-    Object.entries(json).forEach(([id, ll]) => {
-        let waypoints : THREE.Vector2[] = ll.map(xy => coordinateLL(...xy));
-        let route: string = id.split('..')[0];
-        let track: string = id.split('..')[1] ?? id.split('.')[1];
-        //console.debug(id, track);
-        offset = lineOffsets[route] ?? .5;
-        const lineM = new LineMaterial({ color: `#${lc(route)}` , linewidth: .15, worldUnits: true });
-
-        try {
-            let linePoints : THREE.Vector2[] = []
-
-            let a, b, c, bisector, v1, v2;
-
-            // Add the origin
-            b = waypoints[0].clone();
-            c = waypoints[1].clone();
-
-            v2 = c.clone().sub(b).normalize();
-            bisector = new THREE.Vector2(v2.y, -v2.x);
-            linePoints.push(b.addScaledVector(bisector, offset));
-
-            for (let i=1; i<waypoints.length-1; i++) {
-                b = waypoints[i].clone();
-                a = waypoints[i-1].clone();
-                c = waypoints[i+1].clone();
-
-                v1 = a.clone().sub(b).normalize();
-                v2 = c.clone().sub(b).normalize();
-
-                let v1x2 = v1.clone().multiplyScalar(v2.length());
-                let v2x1 = v2.clone().multiplyScalar(v1.length());
-
-                bisector = v1x2.add(v2x1).normalize();
-                if (bisector.length() == 0) {
-                    bisector = new THREE.Vector2(v1.y, -v1.x);
-                }
-                if (bisector.length() == 0) {
-                    bisector = new THREE.Vector2(v2.y, -v2.x);
-                }
-
-                let handedness = v1.cross(v2) > 0 ? 1 : -1;
-                bisector.multiplyScalar(handedness);
-
-
-                if (v1.length() == 0 || v2.length() == 0) {
-                    //console.warn("Points are overlapping", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
-                    console.warn("Lat-Long are overlapping when drawing paths. This point will be omitted from the data: ", ll[i-1], ll[i], ll[i+1]);
-                    continue;
-                }
-
-                if (bisector.length() < .98) {
-                    console.error("Bisector fails", a, b, c, "vs", v1, v2, "Bisector: ", bisector)
-                }
-                /*
-                scene.add(putSphere(new THREE.Vector3(b.x, b.y, 0),.001));
-                scene.add(drawLine(b, new THREE.Vector2(b.x + bisector.x, b.y + bisector.y), handedness > 0 ? 0x00ff00 : 0xff0000));
-                scene.add(drawLine(b, b.clone().addScaledVector(v1,0.015), 0x0000ff));
-                scene.add(drawLine(b, b.clone().addScaledVector(v2,0.015), 0xff0000));
-                */
-
-                linePoints.push(b.addScaledVector(bisector, offset));
-            }
-
-            // Add terminal
-            a  = waypoints[waypoints.length-2].clone();
-            b = waypoints[waypoints.length-1].clone();
-            v1 = a.clone().sub(b).normalize();
-            bisector = new THREE.Vector2(-v1.y, v1.x);
-            linePoints.push(b.addScaledVector(bisector, offset));
-            linePoints = linePoints.filter(n => n); // Remove null points
-
-            routeMap[id] = linePoints;
-            
-            const lineG = new LineGeometry().setFromPoints(linePoints.map(v => new THREE.Vector3(v.x, v.y, -1)));
-            const line = new Line2(lineG, lineM);
-            scene.add(line);
-        } catch (e) {
-            console.error(e);
-            console.error(`Failed to draw line ${id}: ${waypoints}`);
-            //console.log(waypoints.filter(n => n));
-        }
-    })
-}
-
-export async function initData() {
-
-    getStops()
-        .then(json => Object.values(json).forEach(addStop))
-        //.then(_ => renderer.render(scene,camera));
-
-    const lineColors: Record<string, string> = {};
-
-    getRoutes()
-        .then(json => {
-            json.forEach((route: any) => lineColors[route['route_id']] = route['route_color'])
-        }).then(() => getShapes()
-                        //.then(shapes => {return {'A..N04R': shapes['A..N04R'] }}) // Reduce to one route
-                        .then(shapes => drawRoutes(shapes, lineColors))
-                        .then(() => console.log("Routes loaded")));
-    
-    staticStopTimes = await getStopTimes();
-    
-    console.debug("Static stop times: ");
-    console.debug(staticStopTimes);
-
-    console.debug("Processed routes: ", routeMap);
-
-    //window.setTimeout(() => {setData(pull(), staticStopTimes)}, 5000)
-}
 
 const allTracks : Record<string, Track> = {}
 export async function initDataTracks() {
@@ -401,9 +234,9 @@ export async function initDataTracks() {
     routes.forEach(route => lineColors[route['route_id']] = route['route_color'])
     //console.info("LC:", lineColors)
 
-    for (let route_id in shapes) {
-        let staticRouteData = Object.values(staticStopTimes).find(r => r.routeID == route_id)
-        let route: string = route_id.split('..')[0];
+    for (const route_id in shapes) {
+        const staticRouteData = Object.values(staticStopTimes).find(r => r.routeID == route_id)
+        const route: string = route_id.split('..')[0];
 
         if (!staticRouteData) {
             console.error("Couldn't find a static route for routeID: ", route_id);
@@ -434,7 +267,7 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
         // staticData.key = "AFA24GEN-1038-Sunday-00_000600_1..S03R"
 
         nTotal++;
-        let rtd = realTimeData[key];
+        const rtd = realTimeData[key];
 
         // Trains with no stop times are probably at the end of their routes and won't be included
         // TODO check this against static data?
@@ -449,11 +282,11 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
 
         let train : Train = trains[rtd.tripID]
         if (!train) {
-            let staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
+            const staticData = Object.values(stopTimes).find((v,i,_) => v.longTripID.includes(rtd.tripID)) ??
                             Object.values(stopTimes).filter((v,i,_) => v.longTripID.includes(rtd.shortTripID))
                                 /*  */.find(route => {
-                                    let firstRTstop = rtd.stopTimes[0][0].stopID;
-                                    let static_stops = route.stops.map(s => s.stopID);
+                                    const firstRTstop = rtd.stopTimes[0][0].stopID;
+                                    const static_stops = route.stops.map(s => s.stopID);
                                     return static_stops.includes(firstRTstop);
                                 }) 
                             ?? Object.values(stopTimes).find((v,i,_) => v.stops.map(s=>s).map(s => s.stopID).includes(rtd.parentStopID!))
@@ -471,7 +304,7 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
 
             if (rtd.hasVehicle) {
                 train.createMesh();
-                let pos = stopCoords[train.data.parentStopID!]
+                const pos = stopCoords[train.data.parentStopID!]
                 //console.debug(pos)
                 //console.debug(train.data.parentStopID);
                 train.setPos(pos);

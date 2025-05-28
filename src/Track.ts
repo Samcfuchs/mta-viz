@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { StaticRoute } from './Static';
 import { CSS2DObject } from 'three/examples/jsm/Addons.js';
 
-let lineOffsets : Record<string, number> = {
+const lineOffsets : Record<string, number> = {
     'L':.25,
     '4':.25, '5':.50, '6':.75,
     '1':.25, '2':.50, '3':.75,
@@ -69,7 +69,7 @@ export class Track {
      * @param route The data from stop_times.txt
      */
     constructor(shape : TrackShape, route : StaticRoute, stops : Record<string, StopInfo>, offset? : number, color? : THREE.ColorRepresentation) {
-        let trainLine = shape.shape_id.split('..')[0];
+        const trainLine = shape.shape_id.split('..')[0];
 
         this.offset = offset ?? lineOffsets[trainLine] ?? 0;
         this.color =  color ?? 0x888888
@@ -79,8 +79,8 @@ export class Track {
         this.shape = shape;
 
         this.stations = route.stops.map(stop => { 
-            let stopInfo = stops[stop.stopID];
-            let xy = coordinateLL(stopInfo.lat, stopInfo.lon)
+            const stopInfo = stops[stop.stopID];
+            const xy = coordinateLL(stopInfo.lat, stopInfo.lon)
             return {
                 id: stop.stopID,
                 parent: stopInfo.parent ?? "",
@@ -100,7 +100,7 @@ export class Track {
     }
 
     generateWaypoints(shape : TrackShape) {
-        let waypointsXY = shape.waypoints.map(wp => coordinateLL(wp.lat, wp.lon));
+        const waypointsXY = shape.waypoints.map(wp => coordinateLL(wp.lat, wp.lon));
 
         let a,b,c, bisector, v1, v2, finalV;
 
@@ -131,8 +131,8 @@ export class Track {
             v1 = a.clone().sub(b).normalize();
             v2 = c.clone().sub(b).normalize();
 
-            let v1x2 = v1.clone().multiplyScalar(v2.length());
-            let v2x1 = v2.clone().multiplyScalar(v1.length());
+            const v1x2 = v1.clone().multiplyScalar(v2.length());
+            const v2x1 = v2.clone().multiplyScalar(v1.length());
 
             bisector = v1x2.add(v2x1).normalize();
             if (bisector.length() == 0) {
@@ -142,7 +142,7 @@ export class Track {
                 bisector = new THREE.Vector2(v2.y, -v2.x);
             }
 
-            let handedness = v1.cross(v2) > 0 ? 1 : -1;
+            const handedness = v1.cross(v2) > 0 ? 1 : -1;
             bisector.multiplyScalar(handedness);
 
 
@@ -223,10 +223,10 @@ export class Track {
      * @returns XY coordinate between the two points
      */
     interp(id1 : string, id2 : string, r : number) : THREE.Vector2 {
-        let v1 = this.stations.find(s => s.id == id1)!.v;
-        let v2 = this.stations.find(s => s.id == id2)!.v;
-        let difference = v2.sub(v1)
-        let lerp = v1.addScaledVector(difference, r);
+        const v1 = this.stations.find(s => s.id == id1)!.v;
+        const v2 = this.stations.find(s => s.id == id2)!.v;
+        const difference = v2.sub(v1)
+        const lerp = v1.addScaledVector(difference, r);
         return lerp;
     }
 
@@ -235,7 +235,7 @@ export class Track {
     }
 
     stn(id : string) : Station | undefined {
-        let station = this.stations.find(s => s.id == id);
+        const station = this.stations.find(s => s.id == id);
         if (!station) console.warn(`Station ${id} not found on line ${this.route_id}`)
         return station
     }
@@ -251,19 +251,19 @@ export class Track {
 
     static drawStop(row: Station, scene : THREE.Scene) {
         if (this.DRAWN_STOPS.includes(row.id)) return;
-        let v = row.v
+        const v = row.v
         stopCoords[row.id] = v;
 
         //if ((row.id.slice(-1) == 'N') || (row.id.slice(-1) == 'S')) return;
         //let geom = new THREE.CircleGeometry(.0004);
-        let geom = new THREE.SphereGeometry(.25);
+        const geom = new THREE.SphereGeometry(.25);
         //geom.lookAt(new THREE.Vector3(0, 0, 1));
         geom.translate(v.x, v.y, 0);
 
         //console.debug(row.name);
 
 
-        let material = new THREE.MeshBasicMaterial({ color: 0xffffff })
+        const material = new THREE.MeshBasicMaterial({ color: 0xffffff })
         const stop = new THREE.Mesh(geom, material)
 
         scene.add(stop);
