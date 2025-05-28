@@ -5,41 +5,42 @@ import json
 ### data.py should import the static GTFS files, and process
 ### them into a database that is appropriate for the frontend
 ### to query **ONCE** when the page loads.
+REALTIME_API_URLS = {
+    'ACE': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace",
+    'IRT': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs",
+    'L': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l",
+    'BDFM': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm",
+    'G': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g",
+    'JZ': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz",
+    'NQRW': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw",
+    'SIR': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
+}
 
-DB_NAME = "data/gtfs.db"
-create_table_query = """
-create table if not exists stops (
-    stop_id text primary key,
-    stop_name text not null,
-    stop_lat real not null,
-    stop_lon real not null,
-    zone_id text
-);
+create_realtime_table_query = """
+    create table if not exists updates (
+        id text primary key,
+        prev_stop_id text,
+        next_stop_id text,
+        prev_stop_time text,
+        next_stop_time text,
+    );
 """
 
 STOPS_FILE = "data/stops.txt"
+DB_NAME = "data/gtfs_rt.db"
 
 def create_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute(create_table_query)
+    cursor.execute(create_realtime_table_query)
     conn.commit()
     conn.close()
 
-def insert_stops():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    with open(STOPS_FILE, 'r', newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        stops = [
-            (row['stop_id'], row['stop_name'], row['stop_lat'], row['stop_lon'], row.get('zone_id'))
-            for row in reader
-        ]
-
-    cursor.executemany("insert or ignore into stops values (?, ?, ?, ?, ?)", stops)
+conn = sqlite3.connect(DB_NAME)
+cursor = conn.cursor()
+def query(q):
+    cursor.execute(q)
     conn.commit()
-    conn.close()
 
 def csv_to_json(fname, out):
     with open(fname, 'r', newline='', encoding='utf-8') as f:
@@ -51,8 +52,9 @@ def csv_to_json(fname, out):
 
 
 if __name__ == "__main__":
-    create_db()
-    insert_stops()
-    print("Imported stops data")
 
-    csv_to_json('data/routes.txt', 'data/routes.json')
+    
+
+
+    conn.close()
+
