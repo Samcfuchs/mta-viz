@@ -236,12 +236,16 @@ export class Track {
 
     stn(id : string) : Station | undefined {
         const station = this.stations.find(s => s.id == id);
-        if (!station) console.warn(`Station ${id} not found on line ${this.route_id}`)
+        //if (!station) console.warn(`Station ${id} not found on line ${this.route_id}`)
         return station
     }
 
     next(id : string) : Station {
         return this.stations[this.stations.findIndex(s => s.id == id) + 1]
+    }
+
+    index(id : string) : number {
+        return this.stations.findIndex(s => s.id == id);
     }
 
     drawStops(scene : THREE.Scene) {
