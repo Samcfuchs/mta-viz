@@ -42,13 +42,22 @@ function getChunk(trip: transit_realtime.ITripDescriptor) : DataChunk {
 
 
 function consolidate(feed: transit_realtime.FeedMessage) : Record<string, DataChunk> {
-    const trips : Record<string, DataChunk> = {};
+    //const trips : Record<string, DataChunk> = {};
+    const trips = data;
 
+
+    let total = 0;
+    let repeat = 0;
 
     feed.entity.forEach(entity => {
         if (entity.tripUpdate) {
             const tripID = entity.tripUpdate.trip.tripId!;
             const t : DataChunk = trips[tripID] ?? getChunk(entity.tripUpdate.trip!);
+
+            if (trips[tripID]) {
+                repeat++;
+            }
+            total++;
 
             // Soonest STU is first, always
             const customUpdates : {stopTime: number, stopID: string}[] = entity.tripUpdate.stopTimeUpdate!.map(stu => {
@@ -82,8 +91,9 @@ function consolidate(feed: transit_realtime.FeedMessage) : Record<string, DataCh
 
         }
     })
-    
 
+    console.info(`${repeat} out of ${total} records were repeats`);
+    
     return trips;
 
 }
@@ -124,6 +134,12 @@ function exportData(data : Record<string, DataChunk>, path: string) {
     fs.writeFile(path, SuperJSON.stringify(data), err => {
         if(err) console.log("Export error:", err)
     });    
+}
+
+function log(data: any, fname: string) {
+    fs.writeFile(`log/${fname}`, JSON.stringify(data), err => {
+        if(err) console.log("Export error:", err)
+    });
 }
 
 function importData() : Record<string, DataChunk> {
