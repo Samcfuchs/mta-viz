@@ -4,7 +4,6 @@ import {initScene, setData, initDataTracks} from './Viz.ts'
 
 initScene();
 //await initData()
-await initDataTracks();
 
 const REALTIME_URL = 'http://localhost:3000/realtime'
 
@@ -12,9 +11,7 @@ const REALTIME_URL = 'http://localhost:3000/realtime'
 //init().then(() => {
 async function fetchData() {
     try {
-        //const d = await fetch(DATA_SERVER + '/realtime')
-        //const d = pull();
-        
+
         const data = await fetch(REALTIME_URL).then(response => {
             if (!response.ok) throw new Error("Fetching realtime data failed");
             return response.json();
@@ -31,6 +28,6 @@ async function fetchData() {
     }
 };
 
-fetchData();
+initDataTracks().then( fetchData );
 
 //});
