@@ -41,8 +41,10 @@ function getChunk(trip: transit_realtime.ITripDescriptor) : DataChunk {
 }
 
 
-function consolidate(feed: transit_realtime.FeedMessage) : Record<string, DataChunk> {
+function consolidate(feed: transit_realtime.FeedMessage | null) : Record<string, DataChunk> {
     //const trips : Record<string, DataChunk> = {};
+    if (!feed) return {};
+
     const trips = data;
 
 
@@ -72,7 +74,9 @@ function consolidate(feed: transit_realtime.FeedMessage) : Record<string, DataCh
             })
 
             // Insert the most recent updates at the beginning of the array
-            t.stopTimes.unshift(customUpdates);
+            //t.stopTimes.unshift(customUpdates);
+            t.stopTimes = [];
+            t.stopTimes[0] = customUpdates;
 
             trips[tripID] = t;
 
@@ -98,6 +102,20 @@ function consolidate(feed: transit_realtime.FeedMessage) : Record<string, DataCh
 
 }
 
+const CULL_TIME = 3 * 60 * 60; // 3 hours
+
+async function trim(data: Record<string, DataChunk>) : Promise<Record<string, DataChunk>> {
+    const time = Date.now() / 1000.0;
+    const oldSize = Object.entries(data).length;
+    const filtData = Object.fromEntries(Object.entries(data).filter((kv, i) => {
+        const d = kv[1];
+        return time - (d.vehicleTimestamp ?? time + CULL_TIME) < CULL_TIME;
+    }))
+    const newSize = Object.entries(filtData).length;
+    console.info(`Data trimmed from ${oldSize} to ${newSize}`);
+    return filtData;
+}
+
 async function fetch_data(URL: string) : Promise<Record<string, DataChunk>> {
     return fetch(URL)
         .then(response => {
@@ -107,7 +125,14 @@ async function fetch_data(URL: string) : Promise<Record<string, DataChunk>> {
             return response;
         })
         .then(response => response.arrayBuffer())
-        .then(buf => transit_realtime.FeedMessage.decode(new Uint8Array(buf)))
+        .then(buf => {
+            try {
+                return transit_realtime.FeedMessage.decode(new Uint8Array(buf));
+            } catch {
+                return {}
+            }
+
+        })
         .then(consolidate);
 }
 
@@ -124,16 +149,15 @@ async function fetch_all() {
         ...await fetch_data(IRT_API_URL)
     }
 
+    console.info(`Total entries: ${Object.entries(data).length}`)
     return data;
 
 }
 
 const PATH = path.join(__dirname, '../data/rt')
 
-function exportData(data : Record<string, DataChunk>, path: string) {
-    fs.writeFile(path, SuperJSON.stringify(data), err => {
-        if(err) console.log("Export error:", err)
-    });    
+async function exportData(data : Record<string, DataChunk>, path: string) {
+    fs.promises.writeFile(path, SuperJSON.stringify(data));
 }
 
 function log(data: any, fname: string) {
@@ -157,19 +181,25 @@ function getTime() : string {
 }
 
 async function periodic() {
-    console.log("Runs periodic function");
+    console.log();
+    console.log('='.repeat(10), new Date().toLocaleString('en-us'), '='.repeat(10));
     fetch_all()
+        .then(trim)
         .then(d => {
             //exportData(d, path.join(PATH, `data_${getTime()}.sjson`))
             exportData(d, path.join(PATH, `data.sjson`))
-            console.info(`Retrieved ${Object.keys(d).length} records from API`);
+            console.info(`>>> Exported ${Object.keys(d).length} records to file`);
+        })
+        .then(() => {
+            console.log('='.repeat(10), new Date().toLocaleString('en-us'), '='.repeat(10));
+
         });
 
     //exportData(data, path.join(PATH, `data_${getTime()}.sjson`))
 
 }
 
-async function init() {
+function init() {
 
     try {
         data = importData();
