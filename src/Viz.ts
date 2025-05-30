@@ -198,7 +198,7 @@ export function initScene() {
         const dt = timestamp - prev
 
         const d = new Date();
-        const t = d.getTime();
+        const t = d.getTime() / 1000;
         //console.log(dt);
 
         Object.entries(trains).map((kv) => { kv[1].update(dt, t); })
@@ -300,18 +300,15 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
             // Create one
             train = new Train(rtd.tripID)
             train.setData(rtd, staticData);
-            train.track = allTracks[rtd.tripID.split('_')[1]];
-
-            if (rtd.hasVehicle) {
-                train.createMesh();
-                const pos = stopCoords[train.data.parentStopID!]
-                //console.debug(pos)
-                //console.debug(train.data.parentStopID);
-                train.setPos(pos);
-                train.addToScene(scene);
-            }
+            train.scene = scene;
 
             trains[rtd.tripID] = train;
+        }
+
+        if (train.delete) {
+            train.deleteFromScene(scene);
+            delete trains[rtd.tripID];
+            return
         }
 
         // could also add static data here
