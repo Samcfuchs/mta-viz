@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { transit_realtime } from "gtfs-realtime-bindings"
-import * as express from 'express';
-import * as cors from 'cors';
+import express from 'express';
+import cors from 'cors';
 import * as path from 'path';
 import * as fs from 'fs';
 import SuperJSON from 'superjson';
@@ -41,9 +40,10 @@ function getChunk(trip: transit_realtime.ITripDescriptor) : DataChunk {
 }
 
 
-function consolidate(feed: transit_realtime.FeedMessage | null) : Record<string, DataChunk> {
+function consolidate(feed: transit_realtime.FeedMessage | null | object) : Record<string, DataChunk> {
     //const trips : Record<string, DataChunk> = {};
     if (!feed) return {};
+    if (!(feed instanceof transit_realtime.FeedMessage)) return {};
 
     const trips = data;
 
@@ -104,6 +104,9 @@ function consolidate(feed: transit_realtime.FeedMessage | null) : Record<string,
 
 const CULL_TIME = 3 * 60 * 60; // 3 hours
 
+/**
+ * Remove records that are older than `CULL_TIME`
+ */
 async function trim(data: Record<string, DataChunk>) : Promise<Record<string, DataChunk>> {
     const time = Date.now() / 1000.0;
     const oldSize = Object.entries(data).length;
@@ -160,14 +163,18 @@ async function exportData(data : Record<string, DataChunk>, path: string) {
     fs.promises.writeFile(path, SuperJSON.stringify(data));
 }
 
-function log(data: any, fname: string) {
+function log(data: object, fname: string) {
     fs.writeFile(`log/${fname}`, JSON.stringify(data), err => {
         if(err) console.log("Export error:", err)
     });
 }
 
 function importData() : Record<string, DataChunk> {
-    return SuperJSON.parse<typeof data>(fs.readFileSync(path.join(PATH, 'data.sjson'), 'utf-8'));
+    try {
+        return SuperJSON.parse<typeof data>(fs.readFileSync(path.join(PATH, 'data.sjson'), 'utf-8'));
+    } catch {
+        return {};
+    }
     //return loaded;
 }
 
@@ -233,33 +240,43 @@ app.use(cors());
 const port = 3000;
 const staticDataPath = '../data/gtfs_subway'
 
-app.get('/stops.txt', (req, res) => {
+/*
+app.get('/stops.txt', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'stops.txt'))
 })
 
-app.get('/shapes.txt', (req, res) => {
+app.get('/shapes.txt', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'shapes.txt'))
 })
 
-app.get('/routes.txt', (req, res) => {
+app.get('/routes.txt', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'routes.txt'))
 })
 
-app.get('/routes.json', (req, res) => {
+app.get('/routes.json', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'routes.json'))
 })
 
-app.get('/stop_times.txt', (req, res) => {
+app.get('/stop_times.txt', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'stop_times.txt'))
 })
 
-app.get('/trips.txt', (req, res) => {
+app.get('/trips.txt', (_req, res) => {
     res.sendFile(path.join(__dirname, staticDataPath, 'trips.txt'))
 })
+*/
 
-app.get('/realtime', (reg, res) => {
+app.get('/version', (_req, res) => {
+    res.send('0.0');
+})
+
+app.use('/data', express.static('data/gtfs_subway'));
+
+app.get('/data/realtime', (_reg, res) => {
     res.send(data);
 })
+
+app.use(express.static('dist/client'))
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`)

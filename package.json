@@ -6,16 +6,19 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:server": "npx tsc -p tsconfig.build.json",
+    "run:server": "node dist/RealTime.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "d3": "^7.9.0",
+    "express": "^5.1.0",
+    "fuse.js": "^7.1.0",
     "gtfs-realtime-bindings": "^1.1.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "superjson": "^2.2.2",
     "three": "^0.172.0",
-    "tsc": "^2.0.4"
+    "typescript": ">=4.8.4 < 5.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -29,12 +32,8 @@
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
-    "express": "^4.21.2",
     "globals": "^15.14.0",
-    "sqlite3": "^5.1.7",
-    "superjson": "^2.2.2",
     "ts-node": "^10.9.2",
-    "typescript": ">=4.8.4 < 5.8.0",
     "typescript-eslint": "^8.18.2",
     "vite": "^6.0.5"
   }

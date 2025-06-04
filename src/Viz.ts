@@ -4,11 +4,11 @@ import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/Addons.js';
-import { Train } from './Train.ts';
-import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, getShapesAsShapes, } from './Static.ts';
-import { DataChunk } from './RealTime.ts';
+import { Train } from './Train';
+import { getShapes, getStops, getRoutes, getStopTimes, StaticRoute, getShapesAsShapes, } from './Static';
+import { DataChunk } from './RealTime';
 import * as d3 from 'd3';
-import { StopInfo, Track } from './Track.ts';
+import { StopInfo, Track } from './Track';
 
 const CENTER_LAT = 40.734789;
 const CENTER_LON = -73.990568;
@@ -299,6 +299,29 @@ export async function setData(realTimeData : Record<string, DataChunk>, stopTime
             }
             // Create one
             train = new Train(rtd.tripID)
+
+            // Find a track to match with
+            /*
+            const route = rtd.tripID.split('_')[1];
+            train.track = allTracks[route];
+            if (!train.track) {
+                const results = trackFuse.search(route);
+
+                if (!results.length) {
+                    console.warn(`Route ${route} has no matching tracks`);
+                    exclude = true;
+                } else {
+                    const realMatches = Object.values(results).filter((m) => m.item[0] == route[0]);
+                    const bestMatch = realMatches[0].item;
+                    train.track = allTracks[bestMatch];
+                }
+                //console.debug(route);
+                //console.debug(results);
+            }
+            */
+
+
+
             train.setData(rtd, staticData);
             train.scene = scene;
 

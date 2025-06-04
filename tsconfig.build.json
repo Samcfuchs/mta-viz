@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",              // for Node backend
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmitOnError": false,
+    "strict": false,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "allowImportingTsExtensions": false, // no .ts in imports
+    "noEmit": false
+  },
+  "include": ["src/RealTime.ts"]
+}
+

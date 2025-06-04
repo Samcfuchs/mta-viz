@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { StopInfo, Track, TrackShape } from './Track';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3000/data';
 const SHAPES_URL = BASE_URL + '/shapes.txt';
 const STOPS_URL = BASE_URL + '/stops.txt';
 const ROUTES_URL = BASE_URL + '/routes.txt'

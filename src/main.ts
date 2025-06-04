@@ -1,11 +1,11 @@
 import './App.css'
-import {initScene, setData, initDataTracks} from './Viz.ts'
+import {initScene, setData, initDataTracks} from './Viz'
 //import {pull, init} from './RealTime.ts';
 
 initScene();
 //await initData()
 
-const REALTIME_URL = 'http://localhost:3000/realtime'
+const REALTIME_URL = 'http://localhost:3000/data/realtime'
 
 
 //init().then(() => {
