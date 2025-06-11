@@ -240,32 +240,6 @@ app.use(cors());
 const port = 3000;
 const staticDataPath = '../data/gtfs_subway'
 
-/*
-app.get('/stops.txt', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'stops.txt'))
-})
-
-app.get('/shapes.txt', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'shapes.txt'))
-})
-
-app.get('/routes.txt', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'routes.txt'))
-})
-
-app.get('/routes.json', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'routes.json'))
-})
-
-app.get('/stop_times.txt', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'stop_times.txt'))
-})
-
-app.get('/trips.txt', (_req, res) => {
-    res.sendFile(path.join(__dirname, staticDataPath, 'trips.txt'))
-})
-*/
-
 app.get('/version', (_req, res) => {
     res.send('0.0');
 })
