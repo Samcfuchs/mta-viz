@@ -358,13 +358,17 @@ export class Train {
         const tripTime = this.nextStop.stopTime - this.prevStop.stopTime;
         const travelTime = time - this.prevStop.stopTime;
         const r = travelTime / tripTime;
-        const posVec = prevVec.clone().addScaledVector(difference, r);
+        const targetPos = prevVec.clone().addScaledVector(difference, r);
+
+        const currPos = this.mesh.position.clone();
+
+        const posDiff = new THREE.Vector3().subVectors(targetPos, currPos);
 
 
         //const targetAngle = difference.clone().normalize()
         //const qrot = new THREE.Quaternion().setFromUnitVectors(this.mesh.rotation.to, targetAngle)
         this.mesh.lookAt(nextVec);
-        this.setPos(posVec);
+        this.setPos(currPos.addScaledVector(posDiff, 1 / ms));
 
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
         //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), 1))
