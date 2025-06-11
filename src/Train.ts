@@ -362,81 +362,16 @@ export class Train {
 
         const currPos = this.mesh.position.clone();
 
-        const posDiff = new THREE.Vector3().subVectors(targetPos, currPos);
-
-
-        //const targetAngle = difference.clone().normalize()
-        //const qrot = new THREE.Quaternion().setFromUnitVectors(this.mesh.rotation.to, targetAngle)
+        if (currPos.equals(new THREE.Vector3())) {
+            this.setPos(targetPos);
+        } else {
+            const posDiff = new THREE.Vector3().subVectors(targetPos, currPos);
+            this.setPos(currPos.addScaledVector(posDiff, 1 / ms));
+        }
         this.mesh.lookAt(nextVec);
-        this.setPos(currPos.addScaledVector(posDiff, 1 / ms));
-
-        //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), ms/dt))
-        //this.setPos(this.mesh.position.addScaledVector(new THREE.Vector3(0,0,.01), 1))
 
 
         return;
-        /*
-
-        if (dt < 0) {
-            console.error(`Train ${this.tripID} has a nextStop that is in the past.`)
-        }
-
-        //this.nextStop = this.data.stopTimes[0].find(v => v.stopTime*1000 > time)
-        this.nextStop = this.data.stopTimes[0][0]
-
-        if (!this.nextStop) {
-            //console.warn("FUCK")
-            this.changeMaterial(Train.errorMaterial);
-            console.error(`Train ${this.tripID} has no nextStop`);
-            return
-        }
-
-        let nextCoords = stopCoords[this.nextStop.stopID]
-        nextCoords = this.track.stn(this.nextStop.stopID)!.v;
-        //nextCoords = stopInfos[this.nextStop.stopID].
-        // If nextCoords aren't available, just skip to the next station
-        if (!nextCoords) {
-            const i = this.data.stopTimes[0].findIndex(s => s == this.nextStop);
-            this.nextStop = this.data.stopTimes[0][i+1];
-            nextCoords = stopCoords[this.nextStop.stopID]
-        }
-        if (!nextCoords) {
-            console.warn(`Stop ${this.nextStop.stopID} has no coords`);
-            return
-        };
-
-        const staticStopSeq : number = this.staticData.stops.findIndex(s => s.stopID == this.nextStop!.stopID)
-        if (staticStopSeq == 0) {
-            // This train has not left its first station yet
-            this.isActive = false;
-            return;
-
-        }
-        if (staticStopSeq == -1) { 
-            console.error(`Train ${this.tripID} has failed staticStopSeq`);
-            return;
-        }
-        if (staticStopSeq > 0) { this.isActive = true; }
-
-        this.prevStop = this.staticData.stops[staticStopSeq - 1] ??
-                        this.staticData.stops[staticStopSeq - 2];
-        if (!this.prevStop) {
-            console.warn(`Train ${this.tripID} to ${this.nextStop.stopID} @ ${this.nextStop.stopTime} can't identify its previous stop`);
-        }
-        //this.prevStop = this.staticData.stops[0];
-
-        //console.info(`Train ${shortTripID} has nextStop ${nextStop}`);
-
-
-        //if (dt < 0) dt = 0;
-
-        //this.setPos(this.mesh.position.addScaledVector(difference, ms/dt*100))
-        this.mesh.position.addScaledVector(difference, ms/dt*1);
-
-        //console.log("updating")
-        //this.mesh.rotateZ(Math.sin(ms/4000)*10);
-        //this.setHeading(180);
-        */
     }
 }
 

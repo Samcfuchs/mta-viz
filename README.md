@@ -54,10 +54,10 @@ node dist/RealTime.js
     - [ ] Add hover and click functions to view stop details
     - [ ] Label stops with their actual names rather than IDs
     - [ ] Graphically represent conjoined stations with multiple stops
-- [ ] Improve train matching between data refreshes: sometimes trains are not
+- [x] Improve train matching between data refreshes: sometimes trains are not
   correctly matched between realtime data sets and they seem to jump between
   locations.
-  - [ ] Interpolate between updates: Trains that are correctly matched but
+  - [x] Interpolate between updates: Trains that are correctly matched but
     receive a "drastic" update should accelerate toward their new location, but
     should not snap from place to place.
 - [ ] Continuous turning: Trains currently don't animate orientation changes,
